@@ -30,7 +30,7 @@
         /* Standard Slider */
         input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
 
-        /* --- NEW DUAL SLIDER STYLES --- */
+        /* DUAL SLIDER STYLES */
         .dual-slider-container { 
             position: relative; height: 30px; margin-top: 10px; cursor: pointer; 
         }
@@ -46,7 +46,7 @@
             position: absolute; top: 3px; width: 22px; height: 22px; 
             background: #fff; border-radius: 50%; z-index: 3; 
             cursor: grab; box-shadow: 0 2px 5px rgba(0,0,0,0.5); 
-            touch-action: none; /* Prevents scrolling while dragging on mobile */
+            touch-action: none; 
         }
         .thumb:active { cursor: grabbing; transform: scale(1.1); background: var(--accent); }
         .thumb.disabled { background: #555; cursor: not-allowed; box-shadow: none; }
@@ -75,13 +75,11 @@
             <div class="mode-opt" id="modeFade" onclick="setMode('fade')">FADE</div>
         </div>
 
-        <!-- Color is shared UI but stores to different state vars -->
         <div class="control-group">
             <label>Color</label>
             <input type="color" id="colorPicker" value="#ffe600" disabled>
         </div>
 
-        <!-- SOLID: Single Brightness -->
         <div id="solidControls">
             <div class="control-group">
                 <label>Brightness <span id="valSolidBright">80%</span></label>
@@ -89,11 +87,9 @@
             </div>
         </div>
 
-        <!-- FADE: Min/Max Double Slider + Speed -->
         <div id="fadeControls" class="hidden">
             <div class="control-group">
                 <label>Fade Range (Min - Max)</label>
-                <!-- Custom Interactive Dual Slider -->
                 <div class="dual-slider-container" id="dualContainer">
                     <div class="dual-slider-track"></div>
                     <div class="dual-slider-highlight" id="rangeHighlight"></div>
@@ -117,10 +113,14 @@
         let currentMode = "solid";
         let controlsEnabled = false;
 
-        // Internal State
+        // FIXED INITIALIZATION: Use Arrays, not Strings!
         let appState = {
-            solid_color: "#ffe600", solid_bright: 0.8,
-            fade_color: "#ff8c00", fade_min: 0.1, fade_max: 0.9, fade_speed: 0.5
+            solid_color: [255, 230, 0], 
+            solid_bright: 0.8,
+            fade_color: [255, 140, 0], 
+            fade_min: 0.1, 
+            fade_max: 0.9, 
+            fade_speed: 0.5
         };
         
         const ui = {
@@ -134,7 +134,6 @@
             status: document.getElementById('statusText'),
             valSolid: document.getElementById('valSolidBright'),
             valSpeed: document.getElementById('valSpeed'),
-            // Dual Slider Elements
             dualContainer: document.getElementById('dualContainer'),
             thumbMin: document.getElementById('thumbMin'),
             thumbMax: document.getElementById('thumbMax'),
@@ -151,9 +150,7 @@
                 encoder.readable.pipeTo(port.writable);
                 writer = encoder.writable.getWriter();
                 
-                // Request current state from device on connect
                 sendRaw({get_state: true}); 
-                
                 enableControls(true);
                 readLoop(); 
             } catch (e) { console.log(e); ui.status.innerText = "Connection Failed"; }
@@ -179,7 +176,6 @@
             ui.fadeSpeed.disabled = !enabled;
             document.getElementById('defaultBtn').disabled = !enabled;
             
-            // Visual toggle for custom thumbs
             if(enabled) {
                 ui.thumbMin.classList.remove('disabled');
                 ui.thumbMax.classList.remove('disabled');
@@ -187,7 +183,6 @@
                 ui.thumbMin.classList.add('disabled');
                 ui.thumbMax.classList.add('disabled');
             }
-
             ui.status.innerText = enabled ? "Connected" : "Disconnected";
         }
 
@@ -239,20 +234,15 @@
             }
         }
 
-        // --- CUSTOM DUAL SLIDER LOGIC ---
+        // --- CUSTOM DUAL SLIDER ---
         function drawDualSlider() {
             const min = appState.fade_min;
             const max = appState.fade_max;
-            
-            // Convert 0.0-1.0 to Percent
             const left = min * 100;
             const width = (max - min) * 100;
             
-            // Adjust visuals (thumb is 22px wide, centered)
-            // We use calc to ensure the center of the thumb is at the percentage point
             ui.thumbMin.style.left = `calc(${left}% - 11px)`;
             ui.thumbMax.style.left = `calc(${left + width}% - 11px)`;
-            
             ui.rangeHighlight.style.left = left + "%";
             ui.rangeHighlight.style.width = width + "%";
         }
@@ -262,23 +252,15 @@
             
             function handleDrag(e, isMin) {
                 if(!controlsEnabled) return;
-                
-                e.preventDefault(); // prevent selection
+                e.preventDefault();
                 const rect = track.getBoundingClientRect();
-                
-                // Get X coordinate from Mouse or Touch
                 let clientX = e.clientX;
                 if(e.touches && e.touches.length > 0) clientX = e.touches[0].clientX;
 
-                // Calculate percentage (0.0 to 1.0)
                 let val = (clientX - rect.left) / rect.width;
-                if(val < 0) val = 0; 
-                if(val > 1) val = 1;
-                
-                // Snap to 0.05 step
+                if(val < 0) val = 0; if(val > 1) val = 1;
                 val = Math.round(val * 20) / 20;
 
-                // Logic to prevent crossing
                 if(isMin) {
                     if(val >= appState.fade_max) val = appState.fade_max - 0.05;
                     appState.fade_min = val;
@@ -286,12 +268,10 @@
                     if(val <= appState.fade_min) val = appState.fade_min + 0.05;
                     appState.fade_max = val;
                 }
-
                 drawDualSlider();
-                sendData(false); // Live update, no save
+                sendData(false);
             }
 
-            // Mouse Events
             ui.thumbMin.onmousedown = (e) => {
                 document.onmousemove = (ev) => handleDrag(ev, true);
                 document.onmouseup = () => { document.onmousemove = null; sendData(true); };
@@ -300,8 +280,6 @@
                 document.onmousemove = (ev) => handleDrag(ev, false);
                 document.onmouseup = () => { document.onmousemove = null; sendData(true); };
             };
-
-            // Touch Events (Mobile)
             ui.thumbMin.ontouchstart = (e) => {
                 document.ontouchmove = (ev) => handleDrag(ev, true);
                 document.ontouchend = () => { document.ontouchmove = null; sendData(true); };
@@ -312,11 +290,12 @@
             };
         }
 
-        initDualSlider(); // Start listeners
+        initDualSlider();
 
         // --- DATA IO ---
         function rgbToHex(rgb) {
-            if(!Array.isArray(rgb)) return rgb; 
+            // Safety check for initialization
+            if(!Array.isArray(rgb)) return "#ffffff"; 
             return "#" + ((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1);
         }
 
@@ -363,7 +342,6 @@
             }
         }
 
-        // Generic Event Listeners
         ['input'].forEach(evt => {
             ui.color.addEventListener(evt, () => saveToState(false));
             ui.solidBright.addEventListener(evt, () => saveToState(false));
