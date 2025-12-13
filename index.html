@@ -2,115 +2,85 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lantern Control</title>
+    <title>Lantern Debugger</title>
     <style>
-        body { font-family: sans-serif; background: #222; color: white; text-align: center; padding: 50px; }
-        h1 { font-weight: 300; letter-spacing: 2px; }
-        .container { background: #333; padding: 30px; border-radius: 15px; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        
-        button { background: #00bcd4; color: white; border: none; padding: 15px 30px; font-size: 16px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; transition: 0.3s; }
-        button:hover { background: #008ba3; }
-        button:disabled { background: #555; cursor: not-allowed; }
-
-        .control-group { margin: 20px 0; text-align: left; }
-        label { display: block; margin-bottom: 5px; font-size: 14px; color: #aaa; }
-        input[type="color"] { width: 100%; height: 50px; border: none; cursor: pointer; }
-        input[type="range"] { width: 100%; cursor: pointer; }
-        
-        .status { font-size: 12px; color: #777; margin-top: 10px; }
+        body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+        .container { border: 1px solid #333; padding: 20px; max-width: 600px; margin: 0 auto; }
+        button { background: #333; color: white; border: 1px solid #555; padding: 10px 20px; cursor: pointer; font-size: 16px;}
+        button:hover { background: #555; }
+        input { margin: 10px 0; width: 100%; }
+        #log { height: 300px; overflow-y: scroll; border-top: 1px solid #333; margin-top: 20px; white-space: pre-wrap; color: #aaa; }
     </style>
 </head>
 <body>
-
     <div class="container">
-        <h1>LANTERN</h1>
-        <button id="connectBtn">🔌 Connect to Lantern</button>
-
-        <div class="control-group">
-            <label>COLOR</label>
-            <input type="color" id="colorPicker" value="#ff9329" disabled>
+        <h1>LANTERN DEBUGGER</h1>
+        <button id="connectBtn">CONNECT USB</button>
+        
+        <div style="margin-top: 20px;">
+            <label>Color</label> <input type="color" id="colorPicker" value="#ff9300">
+            <label>Brightness</label> <input type="range" id="brightSlider" min="0" max="1" step="0.1" value="0.8">
         </div>
 
-        <div class="control-group">
-            <label>BRIGHTNESS</label>
-            <input type="range" id="brightSlider" min="0" max="1" step="0.05" value="0.8" disabled>
-        </div>
-
-        <div class="status" id="statusText">Waiting for connection...</div>
+        <div id="log">Logs waiting...</div>
     </div>
 
     <script>
-        let port;
-        let writer;
-        
-        const connectBtn = document.getElementById('connectBtn');
-        const colorPicker = document.getElementById('colorPicker');
-        const brightSlider = document.getElementById('brightSlider');
-        const statusText = document.getElementById('statusText');
+        let port, writer;
+        const logDiv = document.getElementById('log');
 
-        // hex to [r, g, b]
-        function hexToRgb(hex) {
-            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? [
-                parseInt(result[1], 16),
-                parseInt(result[2], 16),
-                parseInt(result[3], 16)
-            ] : [255, 255, 255];
+        function log(msg, type="TX") {
+            const color = type === "RX" ? "#0f0" : "#0ff"; // Green for RX, Cyan for TX
+            logDiv.innerHTML = `<span style="color:${color}">[${type}]</span> ${msg}<br>` + logDiv.innerHTML;
+        }
+
+        async function connect() {
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+
+                // Set up the Writer (Sending to Pico)
+                const textEncoder = new TextEncoderStream();
+                textEncoder.readable.pipeTo(port.writable);
+                writer = textEncoder.writable.getWriter();
+
+                // Set up the Reader (Listening to Pico)
+                const textDecoder = new TextDecoderStream();
+                port.readable.pipeTo(textDecoder.writable);
+                const reader = textDecoder.readable.getReader();
+
+                document.getElementById('connectBtn').innerText = "CONNECTED";
+                document.getElementById('connectBtn').disabled = true;
+
+                // Infinite loop to read incoming data
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    if (value) log(value.trim(), "RX"); // Log what Pico says
+                }
+
+            } catch (err) { console.error(err); log("Connection Error: " + err); }
         }
 
         async function sendData() {
             if (!writer) return;
+            const data = JSON.stringify({
+                color: hexToRgb(document.getElementById('colorPicker').value),
+                brightness: document.getElementById('brightSlider').value
+            });
             
-            const color = hexToRgb(colorPicker.value);
-            const brightness = brightSlider.value;
-
-            const payload = JSON.stringify({
-                color: color,
-                brightness: brightness
-            }) + "\n"; // Important: The Pico waits for a newline!
-
-            const encoder = new TextEncoder();
-            try {
-                await writer.write(encoder.encode(payload));
-            } catch (err) {
-                statusText.innerText = "Error sending data. Reconnect.";
-            }
+            // Note: We don't log the TX here because the Pico will confirm receipt!
+            await writer.write(data);
         }
 
-        connectBtn.addEventListener('click', async () => {
-            if (!("serial" in navigator)) {
-                alert("Your browser does not support Web Serial. Please use Chrome, Edge, or Opera.");
-                return;
-            }
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : [0,0,0];
+        }
 
-            try {
-                // Prompt user to select device
-                port = await navigator.serial.requestPort();
-                await port.open({ baudRate: 115200 });
-                
-                const textEncoder = new TextEncoderStream();
-                const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
-                writer = textEncoder.writable.getWriter();
-
-                // Enable UI
-                connectBtn.innerText = "Connected";
-                connectBtn.disabled = true;
-                connectBtn.style.background = "#4CAF50";
-                colorPicker.disabled = false;
-                brightSlider.disabled = false;
-                statusText.innerText = "Device Ready";
-
-            } catch (err) {
-                console.error(err);
-                statusText.innerText = "Connection failed or cancelled.";
-            }
-        });
-
-        // Send data when controls change
-        colorPicker.addEventListener('input', sendData);
-        brightSlider.addEventListener('input', sendData);
-
+        document.getElementById('connectBtn').addEventListener('click', connect);
+        document.getElementById('colorPicker').addEventListener('input', sendData);
+        document.getElementById('brightSlider').addEventListener('input', sendData);
     </script>
 </body>
 </html>
