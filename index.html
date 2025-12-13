@@ -6,7 +6,7 @@
     <title>Lantern Control</title>
     <style>
         :root { --accent: #ffb700; --bg: #1a1a1a; --panel: #2d2d2d; --text: #eee; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; user-select: none; }
         
         h1 { font-weight: 300; letter-spacing: 4px; color: var(--accent); margin-bottom: 20px; }
 
@@ -30,19 +30,26 @@
         /* Standard Slider */
         input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
 
-        /* DUAL SLIDER CSS TRICK */
-        .dual-slider-container { position: relative; height: 30px; margin-top: 10px; }
-        .dual-slider-track { position: absolute; top: 12px; left: 0; right: 0; height: 4px; background: #555; border-radius: 2px; }
-        .dual-slider-highlight { position: absolute; top: 12px; height: 4px; background: var(--accent); z-index: 1; }
-        input[type="range"].dual {
-            position: absolute; pointer-events: none; -webkit-appearance: none; z-index: 2; height: 10px; width: 100%; opacity: 0;
+        /* --- NEW DUAL SLIDER STYLES --- */
+        .dual-slider-container { 
+            position: relative; height: 30px; margin-top: 10px; cursor: pointer; 
         }
-        input[type="range"].dual::-webkit-slider-thumb {
-            pointer-events: all; width: 20px; height: 20px; -webkit-appearance: none; background: white; border-radius: 50%; cursor: pointer; margin-top: -8px;
+        .dual-slider-track { 
+            position: absolute; top: 12px; left: 0; right: 0; height: 4px; 
+            background: #555; border-radius: 2px; 
         }
-        /* Visual Thumbs for the Dual Slider */
-        .thumb { position: absolute; top: 4px; width: 20px; height: 20px; background: #fff; border-radius: 50%; z-index: 3; pointer-events: none; box-shadow: 0 2px 5px rgba(0,0,0,0.5); transition: background 0.2s; }
-        .thumb.active { background: var(--accent); }
+        .dual-slider-highlight { 
+            position: absolute; top: 12px; height: 4px; 
+            background: var(--accent); z-index: 1; 
+        }
+        .thumb { 
+            position: absolute; top: 3px; width: 22px; height: 22px; 
+            background: #fff; border-radius: 50%; z-index: 3; 
+            cursor: grab; box-shadow: 0 2px 5px rgba(0,0,0,0.5); 
+            touch-action: none; /* Prevents scrolling while dragging on mobile */
+        }
+        .thumb:active { cursor: grabbing; transform: scale(1.1); background: var(--accent); }
+        .thumb.disabled { background: #555; cursor: not-allowed; box-shadow: none; }
 
         /* Mode Switcher */
         .mode-switch { display: flex; background: #222; border-radius: 10px; padding: 5px; margin-bottom: 20px; }
@@ -86,15 +93,12 @@
         <div id="fadeControls" class="hidden">
             <div class="control-group">
                 <label>Fade Range (Min - Max)</label>
-                <div class="dual-slider-container">
+                <!-- Custom Interactive Dual Slider -->
+                <div class="dual-slider-container" id="dualContainer">
                     <div class="dual-slider-track"></div>
                     <div class="dual-slider-highlight" id="rangeHighlight"></div>
-                    <!-- Visible Thumbs -->
                     <div class="thumb" id="thumbMin"></div>
                     <div class="thumb" id="thumbMax"></div>
-                    <!-- Actual Inputs (Invisible) -->
-                    <input type="range" class="dual" id="fadeMin" min="0" max="1" step="0.05" value="0.1" disabled>
-                    <input type="range" class="dual" id="fadeMax" min="0" max="1" step="0.05" value="0.9" disabled>
                 </div>
             </div>
 
@@ -111,8 +115,9 @@
     <script>
         let port, writer;
         let currentMode = "solid";
+        let controlsEnabled = false;
 
-        // Internal State Mirror
+        // Internal State
         let appState = {
             solid_color: "#ffe600", solid_bright: 0.8,
             fade_color: "#ff8c00", fade_min: 0.1, fade_max: 0.9, fade_speed: 0.5
@@ -125,16 +130,15 @@
             fadeDiv: document.getElementById('fadeControls'),
             color: document.getElementById('colorPicker'),
             solidBright: document.getElementById('solidBright'),
-            fadeMin: document.getElementById('fadeMin'),
-            fadeMax: document.getElementById('fadeMax'),
             fadeSpeed: document.getElementById('fadeSpeed'),
             status: document.getElementById('statusText'),
-            // Visuals
+            valSolid: document.getElementById('valSolidBright'),
+            valSpeed: document.getElementById('valSpeed'),
+            // Dual Slider Elements
+            dualContainer: document.getElementById('dualContainer'),
             thumbMin: document.getElementById('thumbMin'),
             thumbMax: document.getElementById('thumbMax'),
-            rangeHighlight: document.getElementById('rangeHighlight'),
-            valSolid: document.getElementById('valSolidBright'),
-            valSpeed: document.getElementById('valSpeed')
+            rangeHighlight: document.getElementById('rangeHighlight')
         };
 
         // --- USB ---
@@ -151,7 +155,7 @@
                 sendRaw({get_state: true}); 
                 
                 enableControls(true);
-                readLoop(); // Start listening for data
+                readLoop(); 
             } catch (e) { console.log(e); ui.status.innerText = "Connection Failed"; }
         });
 
@@ -167,23 +171,30 @@
         });
 
         function enableControls(enabled) {
+            controlsEnabled = enabled;
             ui.connect.disabled = enabled;
             ui.disconnect.disabled = !enabled;
             ui.color.disabled = !enabled;
             ui.solidBright.disabled = !enabled;
-            ui.fadeMin.disabled = !enabled;
-            ui.fadeMax.disabled = !enabled;
             ui.fadeSpeed.disabled = !enabled;
             document.getElementById('defaultBtn').disabled = !enabled;
+            
+            // Visual toggle for custom thumbs
+            if(enabled) {
+                ui.thumbMin.classList.remove('disabled');
+                ui.thumbMax.classList.remove('disabled');
+            } else {
+                ui.thumbMin.classList.add('disabled');
+                ui.thumbMax.classList.add('disabled');
+            }
+
             ui.status.innerText = enabled ? "Connected" : "Disconnected";
         }
 
         async function readLoop() {
-            // Setup reader to get settings back from Pico
             const decoder = new TextDecoderStream();
             port.readable.pipeTo(decoder.writable);
             const reader = decoder.readable.getReader();
-            
             try {
                 while (true) {
                     const { value, done } = await reader.read();
@@ -194,13 +205,10 @@
         }
 
         function parseIncoming(text) {
-            // Simple check for JSON
             if(text.indexOf('{') > -1) {
                 try {
-                    // Extract JSON if mixed with noise
                     let jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}')+1);
                     let data = JSON.parse(jsonStr);
-                    // Update App State
                     Object.assign(appState, data);
                     updateUI();
                 } catch(e) {}
@@ -219,57 +227,96 @@
         };
 
         function updateUI() {
-            // Sync UI elements to Internal State
             if(currentMode === 'solid') {
                 ui.color.value = rgbToHex(appState.solid_color);
                 ui.solidBright.value = appState.solid_bright;
                 ui.valSolid.innerText = Math.round(appState.solid_bright*100) + "%";
             } else {
                 ui.color.value = rgbToHex(appState.fade_color);
-                ui.fadeMin.value = appState.fade_min;
-                ui.fadeMax.value = appState.fade_max;
                 ui.fadeSpeed.value = appState.fade_speed;
                 ui.valSpeed.innerText = appState.fade_speed + "x";
-                updateDualSliderVisuals();
+                drawDualSlider();
             }
         }
 
-        function updateDualSliderVisuals() {
-            const min = parseFloat(ui.fadeMin.value);
-            const max = parseFloat(ui.fadeMax.value);
+        // --- CUSTOM DUAL SLIDER LOGIC ---
+        function drawDualSlider() {
+            const min = appState.fade_min;
+            const max = appState.fade_max;
             
-            // Percentage logic for visuals
+            // Convert 0.0-1.0 to Percent
             const left = min * 100;
             const width = (max - min) * 100;
             
-            ui.thumbMin.style.left = `calc(${left}% - 10px)`;
-            ui.thumbMax.style.left = `calc(${left + width}% - 10px)`;
+            // Adjust visuals (thumb is 22px wide, centered)
+            // We use calc to ensure the center of the thumb is at the percentage point
+            ui.thumbMin.style.left = `calc(${left}% - 11px)`;
+            ui.thumbMax.style.left = `calc(${left + width}% - 11px)`;
             
             ui.rangeHighlight.style.left = left + "%";
             ui.rangeHighlight.style.width = width + "%";
         }
 
-        // --- DOUBLE SLIDER LOGIC ---
-        ui.fadeMin.addEventListener('input', () => {
-            let min = parseFloat(ui.fadeMin.value);
-            let max = parseFloat(ui.fadeMax.value);
-            if(min >= max) ui.fadeMin.value = max - 0.05;
-            updateDualSliderVisuals();
-            saveToState(false);
-        });
+        function initDualSlider() {
+            const track = ui.dualContainer;
+            
+            function handleDrag(e, isMin) {
+                if(!controlsEnabled) return;
+                
+                e.preventDefault(); // prevent selection
+                const rect = track.getBoundingClientRect();
+                
+                // Get X coordinate from Mouse or Touch
+                let clientX = e.clientX;
+                if(e.touches && e.touches.length > 0) clientX = e.touches[0].clientX;
 
-        ui.fadeMax.addEventListener('input', () => {
-            let min = parseFloat(ui.fadeMin.value);
-            let max = parseFloat(ui.fadeMax.value);
-            if(max <= min) ui.fadeMax.value = min + 0.05;
-            updateDualSliderVisuals();
-            saveToState(false);
-        });
-        
+                // Calculate percentage (0.0 to 1.0)
+                let val = (clientX - rect.left) / rect.width;
+                if(val < 0) val = 0; 
+                if(val > 1) val = 1;
+                
+                // Snap to 0.05 step
+                val = Math.round(val * 20) / 20;
+
+                // Logic to prevent crossing
+                if(isMin) {
+                    if(val >= appState.fade_max) val = appState.fade_max - 0.05;
+                    appState.fade_min = val;
+                } else {
+                    if(val <= appState.fade_min) val = appState.fade_min + 0.05;
+                    appState.fade_max = val;
+                }
+
+                drawDualSlider();
+                sendData(false); // Live update, no save
+            }
+
+            // Mouse Events
+            ui.thumbMin.onmousedown = (e) => {
+                document.onmousemove = (ev) => handleDrag(ev, true);
+                document.onmouseup = () => { document.onmousemove = null; sendData(true); };
+            };
+            ui.thumbMax.onmousedown = (e) => {
+                document.onmousemove = (ev) => handleDrag(ev, false);
+                document.onmouseup = () => { document.onmousemove = null; sendData(true); };
+            };
+
+            // Touch Events (Mobile)
+            ui.thumbMin.ontouchstart = (e) => {
+                document.ontouchmove = (ev) => handleDrag(ev, true);
+                document.ontouchend = () => { document.ontouchmove = null; sendData(true); };
+            };
+            ui.thumbMax.ontouchstart = (e) => {
+                document.ontouchmove = (ev) => handleDrag(ev, false);
+                document.ontouchend = () => { document.ontouchmove = null; sendData(true); };
+            };
+        }
+
+        initDualSlider(); // Start listeners
+
         // --- DATA IO ---
         function rgbToHex(rgb) {
-            // handle [255,255,255] -> #ffffff
-            if(!Array.isArray(rgb)) return rgb; // already hex?
+            if(!Array.isArray(rgb)) return rgb; 
             return "#" + ((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1);
         }
 
@@ -286,8 +333,6 @@
                 ui.valSolid.innerText = Math.round(appState.solid_bright*100) + "%";
             } else {
                 appState.fade_color = color;
-                appState.fade_min = parseFloat(ui.fadeMin.value);
-                appState.fade_max = parseFloat(ui.fadeMax.value);
                 appState.fade_speed = parseFloat(ui.fadeSpeed.value);
                 ui.valSpeed.innerText = appState.fade_speed + "x";
             }
@@ -328,8 +373,6 @@
         ['change'].forEach(evt => {
             ui.color.addEventListener(evt, () => saveToState(true));
             ui.solidBright.addEventListener(evt, () => saveToState(true));
-            ui.fadeMin.addEventListener(evt, () => saveToState(true));
-            ui.fadeMax.addEventListener(evt, () => saveToState(true));
             ui.fadeSpeed.addEventListener(evt, () => saveToState(true));
         });
 
@@ -338,11 +381,8 @@
                 solid_color: [255, 230, 0], solid_bright: 0.8,
                 fade_color: [255, 140, 0], fade_min: 0.1, fade_max: 0.9, fade_speed: 0.5
            };
-           setMode('solid'); // Updates UI and sends save
+           setMode('solid'); 
         });
-
-        // Initialize UI visuals
-        updateDualSliderVisuals();
         
     </script>
 </body>
