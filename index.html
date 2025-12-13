@@ -122,7 +122,7 @@
         <div class="status" id="statusText">Ready to connect</div>
     </div>
 
-    <div class="version">v1.1</div>
+    <div class="version">v1.2</div>
 
     <script>
         let port, writer;
@@ -344,7 +344,7 @@
                 ui.valSolid.innerText = Math.round(appState.solid_bright*100) + "%";
             } else {
                 appState.fade_color = color;
-                // Dual Color Logic
+                // Capture the Checkbox state HERE
                 appState.fade_use_2 = ui.checkFade2.checked;
                 appState.fade_color_2 = hexToRgb(ui.color2.value);
                 
@@ -392,9 +392,10 @@
             ui.solidBright.addEventListener(evt, () => saveToState(true));
             ui.fadeSpeed.addEventListener(evt, () => saveToState(true));
             ui.color2.addEventListener(evt, () => saveToState(true));
+            // FIXED EVENT LISTENER ORDER
             ui.checkFade2.addEventListener(evt, () => {
-                updateUI(); // Toggle visibility of color box
-                saveToState(true);
+                saveToState(true); // 1. Save checkbox state to Memory
+                updateUI();        // 2. Update screen (show color 2 box)
             });
         });
 
