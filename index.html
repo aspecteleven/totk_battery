@@ -8,9 +8,9 @@
         :root { --accent: #ffb700; --bg: #1a1a1a; --panel: #2d2d2d; --text: #eee; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
         
-        h1 { font-weight: 300; letter-spacing: 4px; color: var(--accent); margin-bottom: 30px; }
+        h1 { font-weight: 300; letter-spacing: 4px; color: var(--accent); margin-bottom: 20px; }
 
-        .container { background: var(--panel); padding: 30px; border-radius: 20px; width: 320px; box-shadow: 0 15px 50px rgba(0,0,0,0.5); }
+        .container { background: var(--panel); padding: 30px; border-radius: 20px; width: 340px; box-shadow: 0 15px 50px rgba(0,0,0,0.5); }
         
         /* Buttons */
         .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -25,10 +25,25 @@
         .control-group { margin-bottom: 25px; }
         label { display: flex; justify-content: space-between; font-size: 13px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
         
-        /* Inputs */
         input[type="color"] { width: 100%; height: 50px; border: none; border-radius: 8px; cursor: pointer; background: none; }
-        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
         
+        /* Standard Slider */
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+
+        /* DUAL SLIDER CSS TRICK */
+        .dual-slider-container { position: relative; height: 30px; margin-top: 10px; }
+        .dual-slider-track { position: absolute; top: 12px; left: 0; right: 0; height: 4px; background: #555; border-radius: 2px; }
+        .dual-slider-highlight { position: absolute; top: 12px; height: 4px; background: var(--accent); z-index: 1; }
+        input[type="range"].dual {
+            position: absolute; pointer-events: none; -webkit-appearance: none; z-index: 2; height: 10px; width: 100%; opacity: 0;
+        }
+        input[type="range"].dual::-webkit-slider-thumb {
+            pointer-events: all; width: 20px; height: 20px; -webkit-appearance: none; background: white; border-radius: 50%; cursor: pointer; margin-top: -8px;
+        }
+        /* Visual Thumbs for the Dual Slider */
+        .thumb { position: absolute; top: 4px; width: 20px; height: 20px; background: #fff; border-radius: 50%; z-index: 3; pointer-events: none; box-shadow: 0 2px 5px rgba(0,0,0,0.5); transition: background 0.2s; }
+        .thumb.active { background: var(--accent); }
+
         /* Mode Switcher */
         .mode-switch { display: flex; background: #222; border-radius: 10px; padding: 5px; margin-bottom: 20px; }
         .mode-opt { flex: 1; text-align: center; padding: 10px; cursor: pointer; border-radius: 8px; font-size: 14px; color: #777; transition: 0.3s; }
@@ -43,81 +58,109 @@
     <h1>LANTERN</h1>
 
     <div class="container">
-        <!-- Connect / Disconnect -->
         <div class="btn-group">
             <button id="connectBtn" class="btn-main">🔌 CONNECT</button>
             <button id="disconnectBtn" class="btn-sec" disabled>❌</button>
         </div>
 
-        <!-- Mode Selection -->
         <div class="mode-switch">
             <div class="mode-opt active" id="modeSolid" onclick="setMode('solid')">SOLID</div>
             <div class="mode-opt" id="modeFade" onclick="setMode('fade')">FADE</div>
         </div>
 
-        <!-- Common Controls -->
+        <!-- Color is shared UI but stores to different state vars -->
         <div class="control-group">
             <label>Color</label>
             <input type="color" id="colorPicker" value="#ffe600" disabled>
         </div>
 
-        <div class="control-group">
-            <label>Master Brightness</label>
-            <input type="range" id="brightSlider" min="0" max="1" step="0.05" value="0.8" disabled>
+        <!-- SOLID: Single Brightness -->
+        <div id="solidControls">
+            <div class="control-group">
+                <label>Brightness <span id="valSolidBright">80%</span></label>
+                <input type="range" id="solidBright" min="0" max="1" step="0.05" value="0.8" disabled>
+            </div>
         </div>
 
-        <!-- Fade Specific Controls -->
+        <!-- FADE: Min/Max Double Slider + Speed -->
         <div id="fadeControls" class="hidden">
             <div class="control-group">
-                <label>Fade Speed</label>
-                <input type="range" id="speedSlider" min="0.1" max="3.0" step="0.1" value="0.5" disabled>
+                <label>Fade Range (Min - Max)</label>
+                <div class="dual-slider-container">
+                    <div class="dual-slider-track"></div>
+                    <div class="dual-slider-highlight" id="rangeHighlight"></div>
+                    <!-- Visible Thumbs -->
+                    <div class="thumb" id="thumbMin"></div>
+                    <div class="thumb" id="thumbMax"></div>
+                    <!-- Actual Inputs (Invisible) -->
+                    <input type="range" class="dual" id="fadeMin" min="0" max="1" step="0.05" value="0.1" disabled>
+                    <input type="range" class="dual" id="fadeMax" min="0" max="1" step="0.05" value="0.9" disabled>
+                </div>
             </div>
-            <div class="control-group">
-                <label>Variety / Randomness</label>
-                <input type="range" id="varSlider" min="0" max="1.0" step="0.1" value="0.0" disabled>
+
+            <div class="control-group" style="margin-top:40px">
+                <label>Fade Speed <span id="valSpeed">1.0</span></label>
+                <input type="range" id="fadeSpeed" min="0.1" max="3.0" step="0.1" value="0.5" disabled>
             </div>
         </div>
 
         <button id="defaultBtn" class="btn-sec" style="width:100%" disabled>RESET TO DEFAULTS</button>
-
         <div class="status" id="statusText">Ready to connect</div>
     </div>
 
     <script>
         let port, writer;
         let currentMode = "solid";
+
+        // Internal State Mirror
+        let appState = {
+            solid_color: "#ffe600", solid_bright: 0.8,
+            fade_color: "#ff8c00", fade_min: 0.1, fade_max: 0.9, fade_speed: 0.5
+        };
         
         const ui = {
             connect: document.getElementById('connectBtn'),
             disconnect: document.getElementById('disconnectBtn'),
-            default: document.getElementById('defaultBtn'),
-            solid: document.getElementById('modeSolid'),
-            fade: document.getElementById('modeFade'),
-            fadePanel: document.getElementById('fadeControls'),
+            solidDiv: document.getElementById('solidControls'),
+            fadeDiv: document.getElementById('fadeControls'),
             color: document.getElementById('colorPicker'),
-            bright: document.getElementById('brightSlider'),
-            speed: document.getElementById('speedSlider'),
-            vary: document.getElementById('varSlider'),
-            status: document.getElementById('statusText')
+            solidBright: document.getElementById('solidBright'),
+            fadeMin: document.getElementById('fadeMin'),
+            fadeMax: document.getElementById('fadeMax'),
+            fadeSpeed: document.getElementById('fadeSpeed'),
+            status: document.getElementById('statusText'),
+            // Visuals
+            thumbMin: document.getElementById('thumbMin'),
+            thumbMax: document.getElementById('thumbMax'),
+            rangeHighlight: document.getElementById('rangeHighlight'),
+            valSolid: document.getElementById('valSolidBright'),
+            valSpeed: document.getElementById('valSpeed')
         };
 
-        // --- USB CONNECTION ---
+        // --- USB ---
         ui.connect.addEventListener('click', async () => {
-            if (!navigator.serial) return alert("Use Chrome/Edge.");
+            if (!navigator.serial) return alert("Browser not supported.");
             try {
                 port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
-                const textEncoder = new TextEncoderStream();
-                textEncoder.readable.pipeTo(port.writable);
-                writer = textEncoder.writable.getWriter();
+                const encoder = new TextEncoderStream();
+                encoder.readable.pipeTo(port.writable);
+                writer = encoder.writable.getWriter();
+                
+                // Request current state from device on connect
+                sendRaw({get_state: true}); 
+                
                 enableControls(true);
+                readLoop(); // Start listening for data
             } catch (e) { console.log(e); ui.status.innerText = "Connection Failed"; }
         });
 
         ui.disconnect.addEventListener('click', async () => {
             if (writer) {
-                await writer.close();
-                await port.close();
+                try {
+                    await writer.close();
+                    await port.close();
+                } catch(e){}
                 writer = null; port = null;
                 enableControls(false);
             }
@@ -126,81 +169,181 @@
         function enableControls(enabled) {
             ui.connect.disabled = enabled;
             ui.disconnect.disabled = !enabled;
-            ui.default.disabled = !enabled;
             ui.color.disabled = !enabled;
-            ui.bright.disabled = !enabled;
-            ui.speed.disabled = !enabled;
-            ui.vary.disabled = !enabled;
+            ui.solidBright.disabled = !enabled;
+            ui.fadeMin.disabled = !enabled;
+            ui.fadeMax.disabled = !enabled;
+            ui.fadeSpeed.disabled = !enabled;
+            document.getElementById('defaultBtn').disabled = !enabled;
             ui.status.innerText = enabled ? "Connected" : "Disconnected";
-            if(enabled) {
-                ui.connect.innerText = "CONNECTED";
-                ui.connect.style.background = "#4CAF50";
-            } else {
-                ui.connect.innerText = "🔌 CONNECT";
-                ui.connect.style.background = "";
+        }
+
+        async function readLoop() {
+            // Setup reader to get settings back from Pico
+            const decoder = new TextDecoderStream();
+            port.readable.pipeTo(decoder.writable);
+            const reader = decoder.readable.getReader();
+            
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    if (value) parseIncoming(value);
+                }
+            } catch (e) { console.log(e); }
+        }
+
+        function parseIncoming(text) {
+            // Simple check for JSON
+            if(text.indexOf('{') > -1) {
+                try {
+                    // Extract JSON if mixed with noise
+                    let jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}')+1);
+                    let data = JSON.parse(jsonStr);
+                    // Update App State
+                    Object.assign(appState, data);
+                    updateUI();
+                } catch(e) {}
             }
         }
 
-        // --- MODE SWITCHING ---
+        // --- UI LOGIC ---
         window.setMode = (mode) => {
             currentMode = mode;
-            if (mode === 'solid') {
-                ui.solid.classList.add('active');
-                ui.fade.classList.remove('active');
-                ui.fadePanel.classList.add('hidden');
-            } else {
-                ui.solid.classList.remove('active');
-                ui.fade.classList.add('active');
-                ui.fadePanel.classList.remove('hidden');
-            }
-            sendData(true); // Save immediately on mode switch
+            document.getElementById('modeSolid').classList.toggle('active', mode === 'solid');
+            document.getElementById('modeFade').classList.toggle('active', mode === 'fade');
+            ui.solidDiv.classList.toggle('hidden', mode !== 'solid');
+            ui.fadeDiv.classList.toggle('hidden', mode !== 'fade');
+            updateUI();
+            sendData(true);
         };
 
-        // --- DATA SENDING ---
+        function updateUI() {
+            // Sync UI elements to Internal State
+            if(currentMode === 'solid') {
+                ui.color.value = rgbToHex(appState.solid_color);
+                ui.solidBright.value = appState.solid_bright;
+                ui.valSolid.innerText = Math.round(appState.solid_bright*100) + "%";
+            } else {
+                ui.color.value = rgbToHex(appState.fade_color);
+                ui.fadeMin.value = appState.fade_min;
+                ui.fadeMax.value = appState.fade_max;
+                ui.fadeSpeed.value = appState.fade_speed;
+                ui.valSpeed.innerText = appState.fade_speed + "x";
+                updateDualSliderVisuals();
+            }
+        }
+
+        function updateDualSliderVisuals() {
+            const min = parseFloat(ui.fadeMin.value);
+            const max = parseFloat(ui.fadeMax.value);
+            
+            // Percentage logic for visuals
+            const left = min * 100;
+            const width = (max - min) * 100;
+            
+            ui.thumbMin.style.left = `calc(${left}% - 10px)`;
+            ui.thumbMax.style.left = `calc(${left + width}% - 10px)`;
+            
+            ui.rangeHighlight.style.left = left + "%";
+            ui.rangeHighlight.style.width = width + "%";
+        }
+
+        // --- DOUBLE SLIDER LOGIC ---
+        ui.fadeMin.addEventListener('input', () => {
+            let min = parseFloat(ui.fadeMin.value);
+            let max = parseFloat(ui.fadeMax.value);
+            if(min >= max) ui.fadeMin.value = max - 0.05;
+            updateDualSliderVisuals();
+            saveToState(false);
+        });
+
+        ui.fadeMax.addEventListener('input', () => {
+            let min = parseFloat(ui.fadeMin.value);
+            let max = parseFloat(ui.fadeMax.value);
+            if(max <= min) ui.fadeMax.value = min + 0.05;
+            updateDualSliderVisuals();
+            saveToState(false);
+        });
+        
+        // --- DATA IO ---
+        function rgbToHex(rgb) {
+            // handle [255,255,255] -> #ffffff
+            if(!Array.isArray(rgb)) return rgb; // already hex?
+            return "#" + ((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1);
+        }
+
         function hexToRgb(hex) {
             const res = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
             return res ? [parseInt(res[1], 16), parseInt(res[2], 16), parseInt(res[3], 16)] : [0,0,0];
         }
 
-        async function sendData(save = false) {
-            if (!writer) return;
-
-            const payload = {
-                mode: currentMode,
-                color: hexToRgb(ui.color.value),
-                brightness: parseFloat(ui.bright.value),
-                fade_speed: parseFloat(ui.speed.value),
-                fade_var: parseFloat(ui.vary.value),
-                save: save // Tell Pico to write to memory
-            };
-
-            try {
-                await writer.write(JSON.stringify(payload));
-            } catch (e) { ui.status.innerText = "Error sending data"; }
+        function saveToState(sendSaveCmd) {
+            const color = hexToRgb(ui.color.value);
+            if(currentMode === 'solid') {
+                appState.solid_color = color;
+                appState.solid_bright = parseFloat(ui.solidBright.value);
+                ui.valSolid.innerText = Math.round(appState.solid_bright*100) + "%";
+            } else {
+                appState.fade_color = color;
+                appState.fade_min = parseFloat(ui.fadeMin.value);
+                appState.fade_max = parseFloat(ui.fadeMax.value);
+                appState.fade_speed = parseFloat(ui.fadeSpeed.value);
+                ui.valSpeed.innerText = appState.fade_speed + "x";
+            }
+            sendData(sendSaveCmd);
         }
 
-        // --- DEFAULTS ---
-        ui.default.addEventListener('click', () => {
-            ui.color.value = "#ffe600";
-            ui.bright.value = 0.8;
-            ui.speed.value = 0.5;
-            ui.vary.value = 0.0;
-            setMode('solid'); // Will trigger sendData(true)
+        async function sendData(save) {
+            if (!writer) return;
+            const payload = {
+                mode: currentMode,
+                solid_color: appState.solid_color,
+                solid_bright: appState.solid_bright,
+                fade_color: appState.fade_color,
+                fade_min: appState.fade_min,
+                fade_max: appState.fade_max,
+                fade_speed: appState.fade_speed,
+                save: save
+            };
+            sendRaw(payload);
+        }
+
+        async function sendRaw(payload) {
+            if (!writer) return;
+            try {
+                await writer.write(JSON.stringify(payload));
+            } catch(e) {
+                 ui.status.innerText = "Error Sending - Check Connection";
+            }
+        }
+
+        // Generic Event Listeners
+        ['input'].forEach(evt => {
+            ui.color.addEventListener(evt, () => saveToState(false));
+            ui.solidBright.addEventListener(evt, () => saveToState(false));
+            ui.fadeSpeed.addEventListener(evt, () => saveToState(false));
+        });
+        
+        ['change'].forEach(evt => {
+            ui.color.addEventListener(evt, () => saveToState(true));
+            ui.solidBright.addEventListener(evt, () => saveToState(true));
+            ui.fadeMin.addEventListener(evt, () => saveToState(true));
+            ui.fadeMax.addEventListener(evt, () => saveToState(true));
+            ui.fadeSpeed.addEventListener(evt, () => saveToState(true));
         });
 
-        // --- EVENTS ---
-        // 'input' fires while dragging (fast, no save)
-        ui.color.addEventListener('input', () => sendData(false));
-        ui.bright.addEventListener('input', () => sendData(false));
-        ui.speed.addEventListener('input', () => sendData(false));
-        ui.vary.addEventListener('input', () => sendData(false));
+        document.getElementById('defaultBtn').addEventListener('click', () => {
+           appState = {
+                solid_color: [255, 230, 0], solid_bright: 0.8,
+                fade_color: [255, 140, 0], fade_min: 0.1, fade_max: 0.9, fade_speed: 0.5
+           };
+           setMode('solid'); // Updates UI and sends save
+        });
 
-        // 'change' fires when mouse released (save settings)
-        ui.color.addEventListener('change', () => sendData(true));
-        ui.bright.addEventListener('change', () => sendData(true));
-        ui.speed.addEventListener('change', () => sendData(true));
-        ui.vary.addEventListener('change', () => sendData(true));
-
+        // Initialize UI visuals
+        updateDualSliderVisuals();
+        
     </script>
 </body>
 </html>
