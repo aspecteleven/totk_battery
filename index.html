@@ -23,9 +23,10 @@
 
         /* Controls */
         .control-group { margin-bottom: 25px; }
-        label { display: flex; justify-content: space-between; font-size: 13px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        label { display: flex; justify-content: space-between; font-size: 13px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; align-items: center;}
         
         input[type="color"] { width: 100%; height: 50px; border: none; border-radius: 8px; cursor: pointer; background: none; }
+        input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: var(--accent); }
         
         /* Standard Slider */
         input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
@@ -58,6 +59,9 @@
 
         .hidden { display: none; }
         .status { text-align: center; font-size: 12px; color: #555; margin-top: 10px; }
+
+        /* VERSION FOOTER */
+        .version { position: fixed; bottom: 10px; right: 10px; color: #444; font-size: 12px; font-weight: bold; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -76,10 +80,11 @@
         </div>
 
         <div class="control-group">
-            <label>Color</label>
+            <label>Color 1</label>
             <input type="color" id="colorPicker" value="#ffe600" disabled>
         </div>
 
+        <!-- SOLID Controls -->
         <div id="solidControls">
             <div class="control-group">
                 <label>Brightness <span id="valSolidBright">80%</span></label>
@@ -87,9 +92,18 @@
             </div>
         </div>
 
+        <!-- FADE Controls -->
         <div id="fadeControls" class="hidden">
+            
             <div class="control-group">
-                <label>Fade Range (Min - Max)</label>
+                <label>Enable 2nd Color? <input type="checkbox" id="checkFade2" disabled></label>
+                <div id="color2Container" class="hidden" style="margin-top:10px">
+                    <input type="color" id="colorPicker2" value="#0000ff" disabled>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Fade Range (Mix / Brightness)</label>
                 <div class="dual-slider-container" id="dualContainer">
                     <div class="dual-slider-track"></div>
                     <div class="dual-slider-highlight" id="rangeHighlight"></div>
@@ -108,16 +122,19 @@
         <div class="status" id="statusText">Ready to connect</div>
     </div>
 
+    <div class="version">v1.1</div>
+
     <script>
         let port, writer;
         let currentMode = "solid";
         let controlsEnabled = false;
 
-        // FIXED INITIALIZATION: Use Arrays, not Strings!
         let appState = {
             solid_color: [255, 230, 0], 
             solid_bright: 0.8,
             fade_color: [255, 140, 0], 
+            fade_color_2: [0, 0, 255],
+            fade_use_2: false,
             fade_min: 0.1, 
             fade_max: 0.9, 
             fade_speed: 0.5
@@ -130,6 +147,10 @@
             fadeDiv: document.getElementById('fadeControls'),
             color: document.getElementById('colorPicker'),
             solidBright: document.getElementById('solidBright'),
+            // Fade specific
+            checkFade2: document.getElementById('checkFade2'),
+            color2: document.getElementById('colorPicker2'),
+            color2Box: document.getElementById('color2Container'),
             fadeSpeed: document.getElementById('fadeSpeed'),
             status: document.getElementById('statusText'),
             valSolid: document.getElementById('valSolidBright'),
@@ -174,6 +195,8 @@
             ui.color.disabled = !enabled;
             ui.solidBright.disabled = !enabled;
             ui.fadeSpeed.disabled = !enabled;
+            ui.checkFade2.disabled = !enabled;
+            ui.color2.disabled = !enabled;
             document.getElementById('defaultBtn').disabled = !enabled;
             
             if(enabled) {
@@ -228,6 +251,16 @@
                 ui.valSolid.innerText = Math.round(appState.solid_bright*100) + "%";
             } else {
                 ui.color.value = rgbToHex(appState.fade_color);
+                
+                // Color 2 logic
+                ui.checkFade2.checked = appState.fade_use_2;
+                if(appState.fade_use_2) {
+                    ui.color2Box.classList.remove('hidden');
+                    ui.color2.value = rgbToHex(appState.fade_color_2);
+                } else {
+                    ui.color2Box.classList.add('hidden');
+                }
+
                 ui.fadeSpeed.value = appState.fade_speed;
                 ui.valSpeed.innerText = appState.fade_speed + "x";
                 drawDualSlider();
@@ -294,7 +327,6 @@
 
         // --- DATA IO ---
         function rgbToHex(rgb) {
-            // Safety check for initialization
             if(!Array.isArray(rgb)) return "#ffffff"; 
             return "#" + ((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1);
         }
@@ -312,6 +344,10 @@
                 ui.valSolid.innerText = Math.round(appState.solid_bright*100) + "%";
             } else {
                 appState.fade_color = color;
+                // Dual Color Logic
+                appState.fade_use_2 = ui.checkFade2.checked;
+                appState.fade_color_2 = hexToRgb(ui.color2.value);
+                
                 appState.fade_speed = parseFloat(ui.fadeSpeed.value);
                 ui.valSpeed.innerText = appState.fade_speed + "x";
             }
@@ -325,6 +361,8 @@
                 solid_color: appState.solid_color,
                 solid_bright: appState.solid_bright,
                 fade_color: appState.fade_color,
+                fade_color_2: appState.fade_color_2,
+                fade_use_2: appState.fade_use_2,
                 fade_min: appState.fade_min,
                 fade_max: appState.fade_max,
                 fade_speed: appState.fade_speed,
@@ -346,18 +384,25 @@
             ui.color.addEventListener(evt, () => saveToState(false));
             ui.solidBright.addEventListener(evt, () => saveToState(false));
             ui.fadeSpeed.addEventListener(evt, () => saveToState(false));
+            ui.color2.addEventListener(evt, () => saveToState(false));
         });
         
         ['change'].forEach(evt => {
             ui.color.addEventListener(evt, () => saveToState(true));
             ui.solidBright.addEventListener(evt, () => saveToState(true));
             ui.fadeSpeed.addEventListener(evt, () => saveToState(true));
+            ui.color2.addEventListener(evt, () => saveToState(true));
+            ui.checkFade2.addEventListener(evt, () => {
+                updateUI(); // Toggle visibility of color box
+                saveToState(true);
+            });
         });
 
         document.getElementById('defaultBtn').addEventListener('click', () => {
            appState = {
                 solid_color: [255, 230, 0], solid_bright: 0.8,
-                fade_color: [255, 140, 0], fade_min: 0.1, fade_max: 0.9, fade_speed: 0.5
+                fade_color: [255, 140, 0], fade_color_2: [0,0,255], fade_use_2: false,
+                fade_min: 0.1, fade_max: 0.9, fade_speed: 0.5
            };
            setMode('solid'); 
         });
