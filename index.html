@@ -1,113 +1,206 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Lantern Pro</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lantern Control</title>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: #eee; text-align: center; padding: 20px; }
-        .card { background: #2a2a2a; padding: 20px; border-radius: 15px; display: inline-block; width: 320px; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
-        button { width: 100%; padding: 12px; margin: 5px 0; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-connect { background: #00d4ff; color: #000; }
-        .btn-default { background: #444; color: #fff; }
-        .btn-disconnect { background: #ff4444; color: #fff; margin-top: 20px; }
-        .control { text-align: left; margin: 15px 0; }
-        label { font-size: 12px; color: #888; text-transform: uppercase; }
-        input { width: 100%; }
-        select { width: 100%; padding: 8px; background: #333; color: white; border: 1px solid #444; }
+        :root { --accent: #ffb700; --bg: #1a1a1a; --panel: #2d2d2d; --text: #eee; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        
+        h1 { font-weight: 300; letter-spacing: 4px; color: var(--accent); margin-bottom: 30px; }
+
+        .container { background: var(--panel); padding: 30px; border-radius: 20px; width: 320px; box-shadow: 0 15px 50px rgba(0,0,0,0.5); }
+        
+        /* Buttons */
+        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-main { background: var(--accent); color: #000; }
+        .btn-main:hover { background: #ffcc40; }
+        .btn-sec { background: #444; color: #aaa; }
+        .btn-sec:hover { background: #555; color: #fff; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Controls */
+        .control-group { margin-bottom: 25px; }
+        label { display: flex; justify-content: space-between; font-size: 13px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* Inputs */
+        input[type="color"] { width: 100%; height: 50px; border: none; border-radius: 8px; cursor: pointer; background: none; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+        
+        /* Mode Switcher */
+        .mode-switch { display: flex; background: #222; border-radius: 10px; padding: 5px; margin-bottom: 20px; }
+        .mode-opt { flex: 1; text-align: center; padding: 10px; cursor: pointer; border-radius: 8px; font-size: 14px; color: #777; transition: 0.3s; }
+        .mode-opt.active { background: #444; color: var(--accent); font-weight: bold; }
+
+        .hidden { display: none; }
+        .status { text-align: center; font-size: 12px; color: #555; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>LANTERN</h2>
-        <button id="connectBtn" class="btn-connect">Connect Lantern</button>
-        
-        <div class="control">
-            <label>Mode</label>
-            <select id="mode">
-                <option value="0">Solid Color</option>
-                <option value="1">Breathing/Fade</option>
-            </select>
+
+    <h1>LANTERN</h1>
+
+    <div class="container">
+        <!-- Connect / Disconnect -->
+        <div class="btn-group">
+            <button id="connectBtn" class="btn-main">🔌 CONNECT</button>
+            <button id="disconnectBtn" class="btn-sec" disabled>❌</button>
         </div>
 
-        <div class="control">
+        <!-- Mode Selection -->
+        <div class="mode-switch">
+            <div class="mode-opt active" id="modeSolid" onclick="setMode('solid')">SOLID</div>
+            <div class="mode-opt" id="modeFade" onclick="setMode('fade')">FADE</div>
+        </div>
+
+        <!-- Common Controls -->
+        <div class="control-group">
             <label>Color</label>
-            <input type="color" id="color" value="#ffe600">
+            <input type="color" id="colorPicker" value="#ffe600" disabled>
         </div>
 
-        <div class="control">
-            <label>Brightness</label>
-            <input type="range" id="brightness" min="0" max="1" step="0.05" value="0.8">
+        <div class="control-group">
+            <label>Master Brightness</label>
+            <input type="range" id="brightSlider" min="0" max="1" step="0.05" value="0.8" disabled>
         </div>
 
-        <div id="fadeControls" style="display:none">
-            <div class="control">
+        <!-- Fade Specific Controls -->
+        <div id="fadeControls" class="hidden">
+            <div class="control-group">
                 <label>Fade Speed</label>
-                <input type="range" id="speed" min="0" max="1" step="0.1" value="0.5">
+                <input type="range" id="speedSlider" min="0.1" max="3.0" step="0.1" value="0.5" disabled>
             </div>
-            <div class="control">
-                <label>Variety (Randomness)</label>
-                <input type="range" id="variety" min="0" max="1" step="0.1" value="0.5">
+            <div class="control-group">
+                <label>Variety / Randomness</label>
+                <input type="range" id="varSlider" min="0" max="1.0" step="0.1" value="0.0" disabled>
             </div>
         </div>
 
-        <button id="defaultBtn" class="btn-default">Reset to Default</button>
-        <button id="disconnectBtn" class="btn-disconnect" style="display:none">Disconnect</button>
+        <button id="defaultBtn" class="btn-sec" style="width:100%" disabled>RESET TO DEFAULTS</button>
+
+        <div class="status" id="statusText">Ready to connect</div>
     </div>
 
     <script>
         let port, writer;
-        const els = {
+        let currentMode = "solid";
+        
+        const ui = {
             connect: document.getElementById('connectBtn'),
-            mode: document.getElementById('mode'),
-            color: document.getElementById('color'),
-            bright: document.getElementById('brightness'),
-            speed: document.getElementById('speed'),
-            variety: document.getElementById('variety'),
-            fadeGroup: document.getElementById('fadeControls'),
+            disconnect: document.getElementById('disconnectBtn'),
             default: document.getElementById('defaultBtn'),
-            disconnect: document.getElementById('disconnectBtn')
+            solid: document.getElementById('modeSolid'),
+            fade: document.getElementById('modeFade'),
+            fadePanel: document.getElementById('fadeControls'),
+            color: document.getElementById('colorPicker'),
+            bright: document.getElementById('brightSlider'),
+            speed: document.getElementById('speedSlider'),
+            vary: document.getElementById('varSlider'),
+            status: document.getElementById('statusText')
         };
 
-        async function send() {
-            if (!writer) return;
-            const hex = els.color.value;
-            const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
-            const data = {
-                mode: parseInt(els.mode.value),
-                color: [r, g, b],
-                brightness: parseFloat(els.bright.value),
-                speed: parseFloat(els.speed.value),
-                variety: parseFloat(els.variety.value)
-            };
-            els.fadeGroup.style.display = data.mode === 1 ? 'block' : 'none';
-            await writer.write(JSON.stringify(data));
+        // --- USB CONNECTION ---
+        ui.connect.addEventListener('click', async () => {
+            if (!navigator.serial) return alert("Use Chrome/Edge.");
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+                const textEncoder = new TextEncoderStream();
+                textEncoder.readable.pipeTo(port.writable);
+                writer = textEncoder.writable.getWriter();
+                enableControls(true);
+            } catch (e) { console.log(e); ui.status.innerText = "Connection Failed"; }
+        });
+
+        ui.disconnect.addEventListener('click', async () => {
+            if (writer) {
+                await writer.close();
+                await port.close();
+                writer = null; port = null;
+                enableControls(false);
+            }
+        });
+
+        function enableControls(enabled) {
+            ui.connect.disabled = enabled;
+            ui.disconnect.disabled = !enabled;
+            ui.default.disabled = !enabled;
+            ui.color.disabled = !enabled;
+            ui.bright.disabled = !enabled;
+            ui.speed.disabled = !enabled;
+            ui.vary.disabled = !enabled;
+            ui.status.innerText = enabled ? "Connected" : "Disconnected";
+            if(enabled) {
+                ui.connect.innerText = "CONNECTED";
+                ui.connect.style.background = "#4CAF50";
+            } else {
+                ui.connect.innerText = "🔌 CONNECT";
+                ui.connect.style.background = "";
+            }
         }
 
-        els.connect.onclick = async () => {
-            port = await navigator.serial.requestPort();
-            await port.open({ baudRate: 115200 });
-            const encoder = new TextEncoderStream();
-            encoder.readable.pipeTo(port.writable);
-            writer = encoder.writable.getWriter();
-            els.connect.innerText = "Connected";
-            els.disconnect.style.display = 'block';
+        // --- MODE SWITCHING ---
+        window.setMode = (mode) => {
+            currentMode = mode;
+            if (mode === 'solid') {
+                ui.solid.classList.add('active');
+                ui.fade.classList.remove('active');
+                ui.fadePanel.classList.add('hidden');
+            } else {
+                ui.solid.classList.remove('active');
+                ui.fade.classList.add('active');
+                ui.fadePanel.classList.remove('hidden');
+            }
+            sendData(true); // Save immediately on mode switch
         };
 
-        els.disconnect.onclick = async () => {
-            await writer.releaseLock();
-            await port.close();
-            location.reload();
-        };
+        // --- DATA SENDING ---
+        function hexToRgb(hex) {
+            const res = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return res ? [parseInt(res[1], 16), parseInt(res[2], 16), parseInt(res[3], 16)] : [0,0,0];
+        }
 
-        els.default.onclick = () => {
-            els.mode.value = "0";
-            els.color.value = "#ffe600";
-            els.bright.value = "0.8";
-            els.speed.value = "0.5";
-            els.variety.value = "0.5";
-            send();
-        };
+        async function sendData(save = false) {
+            if (!writer) return;
 
-        [els.mode, els.color, els.bright, els.speed, els.variety].forEach(el => el.oninput = send);
+            const payload = {
+                mode: currentMode,
+                color: hexToRgb(ui.color.value),
+                brightness: parseFloat(ui.bright.value),
+                fade_speed: parseFloat(ui.speed.value),
+                fade_var: parseFloat(ui.vary.value),
+                save: save // Tell Pico to write to memory
+            };
+
+            try {
+                await writer.write(JSON.stringify(payload));
+            } catch (e) { ui.status.innerText = "Error sending data"; }
+        }
+
+        // --- DEFAULTS ---
+        ui.default.addEventListener('click', () => {
+            ui.color.value = "#ffe600";
+            ui.bright.value = 0.8;
+            ui.speed.value = 0.5;
+            ui.vary.value = 0.0;
+            setMode('solid'); // Will trigger sendData(true)
+        });
+
+        // --- EVENTS ---
+        // 'input' fires while dragging (fast, no save)
+        ui.color.addEventListener('input', () => sendData(false));
+        ui.bright.addEventListener('input', () => sendData(false));
+        ui.speed.addEventListener('input', () => sendData(false));
+        ui.vary.addEventListener('input', () => sendData(false));
+
+        // 'change' fires when mouse released (save settings)
+        ui.color.addEventListener('change', () => sendData(true));
+        ui.bright.addEventListener('change', () => sendData(true));
+        ui.speed.addEventListener('change', () => sendData(true));
+        ui.vary.addEventListener('change', () => sendData(true));
+
     </script>
 </body>
-</html> 
+</html>
