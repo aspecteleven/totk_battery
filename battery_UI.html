@@ -1,0 +1,201 @@
+<html>
+<head>
+    <title>Shrine Battery Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #10222e;
+            box-shadow:inset 0 0 20vh #091320;
+            position: relative;
+
+        }
+
+        .container {
+
+            
+        }
+
+        .stones {
+            position: absolute;
+            width: 261px;
+            height: 100%;
+            top: 0;
+            z-index: 10;
+            mix-blend-mode: lighten;
+        }
+
+        .stone_overlay {
+            position: absolute;
+            width: 500px;
+            height: 100%;
+            z-index: 9;
+            
+        }
+
+        .stone_overlay_left {
+            left: 0;
+            background: url("images/stone_overlay_left.webp") no-repeat;
+            background-position: left;
+            background-size: auto 100%;
+        }
+    
+        .stone_overlay_right {
+            right: 0;
+            background: url("images/stone_overlay_right.webp") no-repeat;
+            background-position: right;
+            background-size: auto 100%;
+        }
+
+        .stone_left {
+            left: 0;
+            background: url("images/stone_left.webp") no-repeat;
+            background-position: left;
+            background-size: auto 100%;
+        }
+
+        .stone_right {
+            right: 0;
+            background: url("images/stone_right.webp") no-repeat;
+            background-position: right;
+            background-size: auto 100%;
+        }
+
+        .elements {
+            position: absolute;
+            width: 100%;
+            height: 80px;
+            left: 0;
+            z-index: 5;
+        }
+
+        .elements_top {
+            top: 0;
+            background: url("images/elements_top.png");
+        }
+        .elements_bottom {
+            bottom: 0;
+            background: url("images/elements_bottom.png");
+            opacity: .6;
+        }
+
+        .battery_container {
+            position: absolute;
+            top:0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            z-index: 20;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .battery_display {
+            position: relative;
+            width: 474px;
+            height: 779px;
+        }   
+
+        .battery_body {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("images/battery_body.png") no-repeat;
+            z-index:21;
+            filter: drop-shadow(5px 5px 5px rgba(0, 0, 0, 0.5));
+        }
+
+        .battery_glass {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("images/battery_glass.png") no-repeat;
+            z-index:22;
+        }
+
+        .battery_glass_glow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index:23;
+            background: radial-gradient(circle,rgba(255, 255, 255, 1) 0%, rgba(255, 255, 0, 1) 100%); 
+
+            /* Apply the mask directly to this div */
+            -webkit-mask-image: url("images/battery_glass_mask_glow.png");
+            mask-image: url("images/battery_glass_mask_glow.png");
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            -webkit-mask-size: 100% auto;
+            mask-size:  100% auto;
+            -webkit-mask-position: center;
+            mask-position: center;
+            mix-blend-mode: lighten;
+        }
+
+        .battery_glass_glow_overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("images/battery_glass.png") no-repeat;
+            z-index:24;
+            opacity: 0.3;
+            
+        }
+
+        .battery_glass_glow_overlay:before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("images/battery_glass_mask_glow.png") no-repeat;
+            filter: drop-shadow(0 0 10px rgba(255,255,0,1)) drop-shadow(0 0 150px rgba(255,255,0,1)) drop-shadow(0 0 50px rgba(255,255,200,1)) blur(30px) ;
+        }
+
+        .battery_glass_glow_overlay:after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("images/battery_glass.png") no-repeat;
+            
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="stone_overlay stone_overlay_left"></div>
+        <div class="stone_overlay stone_overlay_right"></div>
+        <div class="stones stone_left"></div>
+        <div class="stones stone_right"></div>
+        <div class="elements elements_top"></div>
+        <div class="elements elements_bottom"></div>
+    </div>
+    <div class="battery_container">
+        <div class="battery_display">
+            <div class="battery_body"></div>
+            <div class="battery_glass"></div>
+            <div class="battery_glass_glow"></div>
+            <div class="battery_glass_glow_overlay"></div>
+        </div>
+    </div>
+</body>
+</html>
