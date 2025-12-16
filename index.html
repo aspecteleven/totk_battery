@@ -3,75 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lantern Control</title>
+    <title>Shrine Lantern Controller</title>
     <style>
-        :root { --accent: #ffb700; --bg: #1a1a1a; --panel: #2d2d2d; --text: #eee; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; user-select: none; }
-        
-        h1 { font-weight: 300; letter-spacing: 4px; color: var(--accent); margin-bottom: 20px; }
+        /* --- CORE VARIABLES --- */
+        :root { 
+            --accent: #ffb700; 
+            --accent-dim: #997a23;
+            --panel-bg: rgba(16, 34, 46, 0.85); 
+            --text: #a8d8e6; 
+            
+            /* Dynamic Glow Variables updated by JS */
+            --glow-color: 255, 255, 0; 
+            --glow-color-light: 255, 255, 200;
+        }
 
-        .container { background: var(--panel); padding: 30px; border-radius: 20px; width: 340px; box-shadow: 0 15px 50px rgba(0,0,0,0.5); }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #10222e;
+            box-shadow: inset 0 0 20vh #091320;
+            color: var(--text);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden; /* Prevent scrolling */
+            user-select: none;
+        }
+
+        /* --- BACKGROUND ART --- */
+        .container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .stones { position: absolute; width: 261px; height: 100%; top: 0; z-index: 10; mix-blend-mode: lighten; pointer-events: none;}
+        .stone_overlay { position: absolute; width: 500px; height: 100%; z-index: 9; pointer-events: none;}
         
-        /* Buttons */
+        .stone_overlay_left { left: 0; background: url("images/stone_overlay_left.webp") no-repeat left; background-size: auto 100%; }
+        .stone_overlay_right { right: 0; background: url("images/stone_overlay_right.webp") no-repeat right; background-size: auto 100%; }
+        .stone_left { left: 0; background: url("images/stone_left.webp") no-repeat left; background-size: auto 100%; }
+        .stone_right { right: 0; background: url("images/stone_right.webp") no-repeat right; background-size: auto 100%; }
+
+        .elements { position: absolute; width: 100%; height: 80px; left: 0; z-index: 5; pointer-events: none;}
+        .elements_top { top: 0; background: url("images/elements_top.png"); }
+        .elements_bottom { bottom: 0; background: url("images/elements_bottom.png"); opacity: .6; }
+
+        /* --- BATTERY DISPLAY --- */
+        .battery_container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center; z-index: 20;
+            pointer-events: none; 
+        }
+
+        .battery_display { position: relative; width: 474px; height: 779px; transform: scale(0.8); }   
+
+        .battery_body {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: url("images/battery_body_dark.png") no-repeat; z-index: 21;
+        }
+        .battery_body:before {
+            content: " "; position: absolute; top: 0; left: 0; width: 100%; height: 110%;
+            filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.5));
+            background: url("images/battery_body_dark.png") no-repeat;
+            mask-image: linear-gradient(to bottom, transparent 9%, black 100%);
+        }
+
+        .battery_glass {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: url("images/battery_glass.png") no-repeat; z-index: 22;
+        }
+
+        .battery_glass_glow {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 23;
+            background: radial-gradient(circle, rgba(var(--glow-color-light), 1) 0%, rgba(var(--glow-color), 1) 100%);
+            -webkit-mask-image: url("images/battery_glass_mask_glow.png");
+            mask-image: url("images/battery_glass_mask_glow.png");
+            -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+            -webkit-mask-size: 100% auto; mask-size: 100% auto;
+            -webkit-mask-position: center; mask-position: center;
+            mix-blend-mode: overlay;
+            transition: background 0.1s; 
+        }
+
+        .battery_glass_glow_overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: url("images/battery_glass.png") no-repeat; z-index: 24;
+            opacity: .5; mix-blend-mode: multiply;
+        }
+        .battery_glass_glow_overlay:before {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: url("images/battery_glass_mask_glow.png") no-repeat;
+            filter: drop-shadow(0 0 10px rgba(var(--glow-color), 1))
+                    drop-shadow(0 0 150px rgba(var(--glow-color), 1))
+                    drop-shadow(0 0 50px rgba(var(--glow-color-light), 1));
+            transition: filter 0.1s;
+        }
+
+        /* --- CONTROL PANEL --- */
+        .control-panel {
+            position: absolute;
+            left: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 320px;
+            background: var(--panel-bg);
+            border: 2px solid var(--accent-dim);
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent) var(--panel-bg);
+        }
+
+        h1 {
+            font-weight: 300; letter-spacing: 4px; color: var(--accent);
+            text-align: center; margin-bottom: 20px; font-size: 24px;
+            border-bottom: 1px solid var(--accent-dim); padding-bottom: 10px;
+        }
+
         .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-main { background: var(--accent); color: #000; }
-        .btn-main:hover { background: #ffcc40; }
-        .btn-sec { background: #444; color: #aaa; }
-        .btn-sec:hover { background: #555; color: #fff; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button {
+            flex: 1; padding: 12px; border: 1px solid var(--accent);
+            border-radius: 4px; font-weight: bold; cursor: pointer;
+            transition: 0.2s; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .btn-main { background: rgba(255, 183, 0, 0.1); color: var(--accent); }
+        .btn-main:hover { background: var(--accent); color: #000; box-shadow: 0 0 10px var(--accent); }
+        .btn-sec { background: transparent; color: #777; border-color: #555; }
+        .btn-sec:hover { background: #333; color: #fff; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; border-color: #333; }
 
-        /* Controls */
-        .control-group { margin-bottom: 25px; }
-        label { display: flex; justify-content: space-between; font-size: 13px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; align-items: center;}
-        
-        input[type="color"] { width: 100%; height: 50px; border: none; border-radius: 8px; cursor: pointer; background: none; }
-        input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: var(--accent); }
-        
-        /* Standard Slider */
-        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+        .control-group { margin-bottom: 20px; }
+        label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; align-items: center;}
 
-        /* DUAL SLIDER STYLES */
-        .dual-slider-container { 
-            position: relative; height: 30px; margin-top: 10px; cursor: pointer; 
+        input[type="color"] {
+            width: 100%; height: 40px; border: 1px solid var(--accent-dim);
+            background: none; cursor: pointer; border-radius: 4px;
         }
-        .dual-slider-track { 
-            position: absolute; top: 12px; left: 0; right: 0; height: 4px; 
-            background: #555; border-radius: 2px; 
+        
+        input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+
+        /* --- UNIFIED SLIDER STYLES (Single and Dual) --- */
+        .custom-slider-container { position: relative; height: 30px; margin-top: 5px; cursor: pointer; }
+        .custom-slider-track { position: absolute; top: 12px; left: 0; right: 0; height: 4px; background: #333; border-radius: 2px; }
+        .custom-slider-highlight { position: absolute; top: 12px; height: 4px; background: var(--accent); z-index: 1; box-shadow: 0 0 5px var(--accent); }
+        
+        .thumb {
+            position: absolute; top: 2px; width: 24px; height: 24px;
+            background: #10222e; border: 2px solid var(--accent);
+            border-radius: 50%; z-index: 3; cursor: grab;
+            box-shadow: 0 0 5px #000;
+            transition: background 0.2s, border-color 0.2s;
         }
-        .dual-slider-highlight { 
-            position: absolute; top: 12px; height: 4px; 
-            background: var(--accent); z-index: 1; 
-        }
-        .thumb { 
-            position: absolute; top: 3px; width: 22px; height: 22px; 
-            background: #fff; border-radius: 50%; z-index: 3; 
-            cursor: grab; box-shadow: 0 2px 5px rgba(0,0,0,0.5); 
-            touch-action: none; 
-        }
-        .thumb:active { cursor: grabbing; transform: scale(1.1); background: var(--accent); }
-        .thumb.disabled { background: #555; cursor: not-allowed; box-shadow: none; }
+        .thumb:active { background: var(--accent); }
+        
+        /* Disabled State for Sliders */
+        .custom-slider-container.disabled .custom-slider-highlight { background: #555; box-shadow: none; }
+        .custom-slider-container.disabled .thumb { border-color: #555; cursor: not-allowed; }
 
         /* Mode Switcher */
-        .mode-switch { display: flex; background: #222; border-radius: 10px; padding: 5px; margin-bottom: 20px; }
-        .mode-opt { flex: 1; text-align: center; padding: 10px; cursor: pointer; border-radius: 8px; font-size: 14px; color: #777; transition: 0.3s; }
-        .mode-opt.active { background: #444; color: var(--accent); font-weight: bold; }
+        .mode-switch { display: flex; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 4px; margin-bottom: 20px; border: 1px solid #333; }
+        .mode-opt {
+            flex: 1; text-align: center; padding: 8px; cursor: pointer;
+            border-radius: 4px; font-size: 13px; color: #777; transition: 0.3s;
+        }
+        .mode-opt.active { background: var(--accent-dim); color: #fff; text-shadow: 0 0 5px black; }
 
         .hidden { display: none; }
-        .status { text-align: center; font-size: 12px; color: #555; margin-top: 10px; }
+        .status { text-align: center; font-size: 11px; color: #555; margin-top: 10px; }
+        .version { position: fixed; bottom: 10px; right: 10px; color: rgba(255,255,255,0.1); font-size: 12px; pointer-events: none; }
 
-        /* VERSION FOOTER */
-        .version { position: fixed; bottom: 10px; right: 10px; color: #444; font-size: 12px; font-weight: bold; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <h1>LANTERN</h1>
-
+    <!-- BACKGROUND ART LAYERS -->
     <div class="container">
+        <div class="stone_overlay stone_overlay_left"></div>
+        <div class="stone_overlay stone_overlay_right"></div>
+        <div class="stones stone_left"></div>
+        <div class="stones stone_right"></div>
+        <div class="elements elements_top"></div>
+        <div class="elements elements_bottom"></div>
+    </div>
+
+    <div class="battery_container">
+        <div class="battery_display">
+            <div class="battery_body"></div>
+            <div class="battery_glass"></div>
+            <div class="battery_glass_glow"></div>
+            <div class="battery_glass_glow_overlay"></div>
+        </div>
+    </div>
+
+    <!-- UI CONTROL PANEL -->
+    <div class="control-panel">
+        <h1>LANTERN</h1>
+
         <div class="btn-group">
-            <button id="connectBtn" class="btn-main">🔌 CONNECT</button>
-            <button id="disconnectBtn" class="btn-sec" disabled>❌</button>
+            <button id="connectBtn" class="btn-main">Connect</button>
+            <button id="disconnectBtn" class="btn-sec" disabled>Disconnect</button>
         </div>
 
         <div class="mode-switch">
@@ -79,51 +210,68 @@
             <div class="mode-opt" id="modeFade" onclick="setMode('fade')">FADE</div>
         </div>
 
-        <div class="control-group">
-            <label>Color 1</label>
-            <input type="color" id="colorPicker" value="#ffe600" disabled>
-        </div>
-
-        <!-- SOLID Controls -->
+        <!-- Solid Controls -->
         <div id="solidControls">
             <div class="control-group">
+                <label>Color</label>
+                <input type="color" id="colorPicker" value="#ffe600" disabled>
+            </div>
+            
+            <div class="control-group">
                 <label>Brightness <span id="valSolidBright">80%</span></label>
-                <input type="range" id="solidBright" min="0" max="1" step="0.05" value="0.8" disabled>
+                <!-- Custom Slider for Brightness -->
+                <div class="custom-slider-container disabled" id="solidBrightContainer">
+                    <div class="custom-slider-track"></div>
+                    <div class="custom-slider-highlight" id="solidBrightHighlight"></div>
+                    <div class="thumb" id="solidBrightThumb"></div>
+                </div>
             </div>
         </div>
 
-        <!-- FADE Controls -->
+        <!-- Fade Controls -->
         <div id="fadeControls" class="hidden">
-            
             <div class="control-group">
-                <label>Enable 2nd Color? <input type="checkbox" id="checkFade2" disabled></label>
+                <label>Primary Color</label>
+                <input type="color" id="fadeColorPicker1" value="#ffc800" disabled>
+            </div>
+
+            <div class="control-group">
+                <label>Enable Dual Color? <input type="checkbox" id="checkFade2" disabled></label>
                 <div id="color2Container" class="hidden" style="margin-top:10px">
-                    <input type="color" id="colorPicker2" value="#0000ff" disabled>
+                    <label>Secondary Color</label>
+                    <input type="color" id="fadeColorPicker2" value="#ffdc00" disabled>
                 </div>
             </div>
 
             <div class="control-group">
-                <label>Fade Range (Mix / Brightness)</label>
-                <div class="dual-slider-container" id="dualContainer">
-                    <div class="dual-slider-track"></div>
-                    <div class="dual-slider-highlight" id="rangeHighlight"></div>
+                <label>Fade Range (Min/Max)</label>
+                <!-- Dual Slider -->
+                <div class="custom-slider-container disabled" id="dualContainer">
+                    <div class="custom-slider-track"></div>
+                    <div class="custom-slider-highlight" id="rangeHighlight"></div>
                     <div class="thumb" id="thumbMin"></div>
                     <div class="thumb" id="thumbMax"></div>
                 </div>
             </div>
 
-            <div class="control-group" style="margin-top:40px">
-                <label>Fade Speed <span id="valSpeed">1.0</span></label>
-                <input type="range" id="fadeSpeed" min="0.1" max="3.0" step="0.1" value="0.5" disabled>
+            <div class="control-group" style="margin-top:30px">
+                <label>Fade Speed <span id="valSpeed">0.9x</span></label>
+                <!-- Custom Slider for Speed -->
+                <div class="custom-slider-container disabled" id="speedContainer">
+                    <div class="custom-slider-track"></div>
+                    <div class="custom-slider-highlight" id="speedHighlight"></div>
+                    <div class="thumb" id="speedThumb"></div>
+                </div>
             </div>
         </div>
 
-        <button id="defaultBtn" class="btn-sec" style="width:100%" disabled>RESET TO DEFAULTS</button>
+        <button id="defaultBtn" class="btn-sec" style="width:100%" disabled>Reset Defaults</button>
         <div class="status" id="statusText">Ready to connect</div>
     </div>
 
-    <div class="version">v1.3</div>
+    <div class="version">v1.4</div>
 
+    <!-- LOGIC -->
     <script>
         let port, writer;
         let currentMode = "solid";
@@ -132,10 +280,8 @@
         let appState = {
             solid_color: [255, 230, 0], 
             solid_bright: 0.8,
-            
-            // Updated Defaults
             fade_color: [255, 200, 0], 
-            fade_color_2: [255, 230, 0],
+            fade_color_2: [255, 220, 0],
             fade_use_2: true,
             fade_min: 0.1, 
             fade_max: 0.9, 
@@ -147,25 +293,82 @@
             disconnect: document.getElementById('disconnectBtn'),
             solidDiv: document.getElementById('solidControls'),
             fadeDiv: document.getElementById('fadeControls'),
-            color: document.getElementById('colorPicker'),
-            solidBright: document.getElementById('solidBright'),
-            // Fade specific
+            
+            colorSolid: document.getElementById('colorPicker'),
+            colorFade1: document.getElementById('fadeColorPicker1'),
+            colorFade2: document.getElementById('fadeColorPicker2'),
             checkFade2: document.getElementById('checkFade2'),
-            color2: document.getElementById('colorPicker2'),
             color2Box: document.getElementById('color2Container'),
-            fadeSpeed: document.getElementById('fadeSpeed'),
+            
             status: document.getElementById('statusText'),
             valSolid: document.getElementById('valSolidBright'),
             valSpeed: document.getElementById('valSpeed'),
-            dualContainer: document.getElementById('dualContainer'),
-            thumbMin: document.getElementById('thumbMin'),
-            thumbMax: document.getElementById('thumbMax'),
-            rangeHighlight: document.getElementById('rangeHighlight')
+
+            // Slider Elements
+            sliders: {
+                solidBright: {
+                    container: document.getElementById('solidBrightContainer'),
+                    thumb: document.getElementById('solidBrightThumb'),
+                    highlight: document.getElementById('solidBrightHighlight')
+                },
+                speed: {
+                    container: document.getElementById('speedContainer'),
+                    thumb: document.getElementById('speedThumb'),
+                    highlight: document.getElementById('speedHighlight')
+                },
+                dual: {
+                    container: document.getElementById('dualContainer'),
+                    thumbMin: document.getElementById('thumbMin'),
+                    thumbMax: document.getElementById('thumbMax'),
+                    highlight: document.getElementById('rangeHighlight')
+                }
+            }
         };
 
-        // --- USB ---
+        // --- VISUALIZER LOOP ---
+        function animateLantern() {
+            const now = Date.now() / 1000; 
+            let r, g, b;
+
+            if (currentMode === 'solid') {
+                [r, g, b] = appState.solid_color;
+                const br = appState.solid_bright;
+                r *= br; g *= br; b *= br;
+            } else {
+                const speed = appState.fade_speed;
+                const sineVal = (Math.sin(now * speed * 3) + 1) / 2;
+                const range = appState.fade_max - appState.fade_min;
+                const mixFactor = appState.fade_min + (sineVal * range);
+
+                if (appState.fade_use_2) {
+                    const c1 = appState.fade_color;
+                    const c2 = appState.fade_color_2;
+                    r = c1[0] + (c2[0] - c1[0]) * mixFactor;
+                    g = c1[1] + (c2[1] - c1[1]) * mixFactor;
+                    b = c1[2] + (c2[2] - c1[2]) * mixFactor;
+                } else {
+                    [r, g, b] = appState.fade_color;
+                    r *= mixFactor; g *= mixFactor; b *= mixFactor;
+                }
+            }
+            updateGlowVariables(r, g, b);
+            requestAnimationFrame(animateLantern);
+        }
+
+        function updateGlowVariables(r, g, b) {
+            r = Math.round(r); g = Math.round(g); b = Math.round(b);
+            document.documentElement.style.setProperty('--glow-color', `${r}, ${g}, ${b}`);
+            const factor = 0.7; 
+            const lr = Math.round(r + (255 - r) * factor);
+            const lg = Math.round(g + (255 - g) * factor);
+            const lb = Math.round(b + (255 - b) * factor);
+            document.documentElement.style.setProperty('--glow-color-light', `${lr}, ${lg}, ${lb}`);
+        }
+        requestAnimationFrame(animateLantern);
+
+        // --- USB CONNECTION ---
         ui.connect.addEventListener('click', async () => {
-            if (!navigator.serial) return alert("Browser not supported.");
+            if (!navigator.serial) return alert("Browser not supported (Use Chrome/Edge).");
             try {
                 port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
@@ -181,10 +384,7 @@
 
         ui.disconnect.addEventListener('click', async () => {
             if (writer) {
-                try {
-                    await writer.close();
-                    await port.close();
-                } catch(e){}
+                try { await writer.close(); await port.close(); } catch(e){}
                 writer = null; port = null;
                 enableControls(false);
             }
@@ -194,20 +394,19 @@
             controlsEnabled = enabled;
             ui.connect.disabled = enabled;
             ui.disconnect.disabled = !enabled;
-            ui.color.disabled = !enabled;
-            ui.solidBright.disabled = !enabled;
-            ui.fadeSpeed.disabled = !enabled;
+            
+            ui.colorSolid.disabled = !enabled;
+            ui.colorFade1.disabled = !enabled;
+            ui.colorFade2.disabled = !enabled;
             ui.checkFade2.disabled = !enabled;
-            ui.color2.disabled = !enabled;
             document.getElementById('defaultBtn').disabled = !enabled;
             
-            if(enabled) {
-                ui.thumbMin.classList.remove('disabled');
-                ui.thumbMax.classList.remove('disabled');
-            } else {
-                ui.thumbMin.classList.add('disabled');
-                ui.thumbMax.classList.add('disabled');
-            }
+            // Toggle Slider Classes
+            Object.values(ui.sliders).forEach(s => {
+                if(enabled) s.container.classList.remove('disabled');
+                else s.container.classList.add('disabled');
+            });
+
             ui.status.innerText = enabled ? "Connected" : "Disconnected";
         }
 
@@ -235,7 +434,140 @@
             }
         }
 
-        // --- UI LOGIC ---
+        // --- GENERIC SLIDER HANDLER ---
+        function initSlider(config) {
+            /* 
+               config = { 
+                  container, thumb, highlight, 
+                  type: 'single' | 'dual', 
+                  min, max, step,
+                  stateKey: 'solid_bright', // or ['fade_min', 'fade_max'] for dual
+                  onUpdate: (val) => {} // callback to update UI text
+               } 
+            */
+            const { container, thumb, highlight, type, min, max, step, stateKey, onUpdate } = config;
+
+            function updateVisuals() {
+                if (type === 'single') {
+                    const val = appState[stateKey];
+                    const percent = (val - min) / (max - min) * 100;
+                    thumb.style.left = `calc(${percent}% - 12px)`;
+                    highlight.style.width = `${percent}%`;
+                    highlight.style.left = '0';
+                    if(onUpdate) onUpdate(val);
+                } else {
+                    const valMin = appState[stateKey[0]];
+                    const valMax = appState[stateKey[1]];
+                    const pMin = (valMin - min) / (max - min) * 100;
+                    const pMax = (valMax - min) / (max - min) * 100;
+                    
+                    config.thumbMin.style.left = `calc(${pMin}% - 12px)`;
+                    config.thumbMax.style.left = `calc(${pMax}% - 12px)`;
+                    highlight.style.left = `${pMin}%`;
+                    highlight.style.width = `${pMax - pMin}%`;
+                }
+            }
+
+            function handleDrag(e, isThumbMax) {
+                if(!controlsEnabled) return;
+                e.preventDefault();
+                const rect = container.getBoundingClientRect();
+                let clientX = e.clientX;
+                if(e.touches && e.touches.length > 0) clientX = e.touches[0].clientX;
+
+                let percent = (clientX - rect.left) / rect.width;
+                if(percent < 0) percent = 0; if(percent > 1) percent = 1;
+
+                let val = min + (percent * (max - min));
+                val = Math.round(val / step) * step; // snap to step
+                // floating point correction
+                val = parseFloat(val.toFixed(2));
+
+                if (type === 'single') {
+                    appState[stateKey] = val;
+                } else {
+                    // Dual Logic
+                    if (!isThumbMax) { // Moving Min
+                        if(val >= appState[stateKey[1]]) val = appState[stateKey[1]] - step;
+                        appState[stateKey[0]] = val;
+                    } else { // Moving Max
+                        if(val <= appState[stateKey[0]]) val = appState[stateKey[0]] + step;
+                        appState[stateKey[1]] = val;
+                    }
+                    val = parseFloat(val.toFixed(2));
+                }
+
+                updateVisuals();
+                sendData(false); // Update live, don't save yet
+            }
+
+            function addListeners(elem, isThumbMax = false) {
+                const start = (e) => {
+                    const move = (ev) => handleDrag(ev, isThumbMax);
+                    const end = () => { 
+                        document.removeEventListener('mousemove', move);
+                        document.removeEventListener('mouseup', end);
+                        document.removeEventListener('touchmove', move);
+                        document.removeEventListener('touchend', end);
+                        sendData(true); // Save on release
+                    };
+                    document.addEventListener('mousemove', move);
+                    document.addEventListener('mouseup', end);
+                    document.addEventListener('touchmove', move);
+                    document.addEventListener('touchend', end);
+                };
+                elem.addEventListener('mousedown', start);
+                elem.addEventListener('touchstart', start);
+            }
+
+            if(type === 'single') {
+                addListeners(thumb);
+                // Allow clicking track to jump
+                container.addEventListener('mousedown', (e) => {
+                    if(e.target === thumb) return;
+                    handleDrag(e); 
+                    // We need to trigger the end listener manually or just save immediately?
+                    // Simpler to just save immediately for clicks
+                    sendData(true); 
+                });
+            } else {
+                addListeners(config.thumbMin, false);
+                addListeners(config.thumbMax, true);
+            }
+
+            // Return a draw function so we can call it externally
+            return updateVisuals;
+        }
+
+        // --- INITIALIZE SLIDERS ---
+        const drawSolidBright = initSlider({
+            container: ui.sliders.solidBright.container,
+            thumb: ui.sliders.solidBright.thumb,
+            highlight: ui.sliders.solidBright.highlight,
+            type: 'single', min: 0, max: 1, step: 0.05,
+            stateKey: 'solid_bright',
+            onUpdate: (v) => ui.valSolid.innerText = Math.round(v*100) + "%"
+        });
+
+        const drawSpeed = initSlider({
+            container: ui.sliders.speed.container,
+            thumb: ui.sliders.speed.thumb,
+            highlight: ui.sliders.speed.highlight,
+            type: 'single', min: 0.1, max: 3.0, step: 0.1,
+            stateKey: 'fade_speed',
+            onUpdate: (v) => ui.valSpeed.innerText = v + "x"
+        });
+
+        const drawDual = initSlider({
+            container: ui.sliders.dual.container,
+            thumbMin: ui.sliders.dual.thumbMin,
+            thumbMax: ui.sliders.dual.thumbMax,
+            highlight: ui.sliders.dual.highlight,
+            type: 'dual', min: 0, max: 1, step: 0.05,
+            stateKey: ['fade_min', 'fade_max']
+        });
+
+        // --- UI UPDATES ---
         window.setMode = (mode) => {
             currentMode = mode;
             document.getElementById('modeSolid').classList.toggle('active', mode === 'solid');
@@ -248,86 +580,23 @@
 
         function updateUI() {
             if(currentMode === 'solid') {
-                ui.color.value = rgbToHex(appState.solid_color);
-                ui.solidBright.value = appState.solid_bright;
-                ui.valSolid.innerText = Math.round(appState.solid_bright*100) + "%";
+                ui.colorSolid.value = rgbToHex(appState.solid_color);
+                drawSolidBright(); // Update slider pos
             } else {
-                ui.color.value = rgbToHex(appState.fade_color);
-                
-                // Color 2 logic
+                ui.colorFade1.value = rgbToHex(appState.fade_color);
                 ui.checkFade2.checked = appState.fade_use_2;
                 if(appState.fade_use_2) {
                     ui.color2Box.classList.remove('hidden');
-                    ui.color2.value = rgbToHex(appState.fade_color_2);
+                    ui.colorFade2.value = rgbToHex(appState.fade_color_2);
                 } else {
                     ui.color2Box.classList.add('hidden');
                 }
-
-                ui.fadeSpeed.value = appState.fade_speed;
-                ui.valSpeed.innerText = appState.fade_speed + "x";
-                drawDualSlider();
+                drawSpeed(); // Update slider pos
+                drawDual(); // Update slider pos
             }
         }
 
-        // --- CUSTOM DUAL SLIDER ---
-        function drawDualSlider() {
-            const min = appState.fade_min;
-            const max = appState.fade_max;
-            const left = min * 100;
-            const width = (max - min) * 100;
-            
-            ui.thumbMin.style.left = `calc(${left}% - 11px)`;
-            ui.thumbMax.style.left = `calc(${left + width}% - 11px)`;
-            ui.rangeHighlight.style.left = left + "%";
-            ui.rangeHighlight.style.width = width + "%";
-        }
-
-        function initDualSlider() {
-            const track = ui.dualContainer;
-            
-            function handleDrag(e, isMin) {
-                if(!controlsEnabled) return;
-                e.preventDefault();
-                const rect = track.getBoundingClientRect();
-                let clientX = e.clientX;
-                if(e.touches && e.touches.length > 0) clientX = e.touches[0].clientX;
-
-                let val = (clientX - rect.left) / rect.width;
-                if(val < 0) val = 0; if(val > 1) val = 1;
-                val = Math.round(val * 20) / 20;
-
-                if(isMin) {
-                    if(val >= appState.fade_max) val = appState.fade_max - 0.05;
-                    appState.fade_min = val;
-                } else {
-                    if(val <= appState.fade_min) val = appState.fade_min + 0.05;
-                    appState.fade_max = val;
-                }
-                drawDualSlider();
-                sendData(false);
-            }
-
-            ui.thumbMin.onmousedown = (e) => {
-                document.onmousemove = (ev) => handleDrag(ev, true);
-                document.onmouseup = () => { document.onmousemove = null; sendData(true); };
-            };
-            ui.thumbMax.onmousedown = (e) => {
-                document.onmousemove = (ev) => handleDrag(ev, false);
-                document.onmouseup = () => { document.onmousemove = null; sendData(true); };
-            };
-            ui.thumbMin.ontouchstart = (e) => {
-                document.ontouchmove = (ev) => handleDrag(ev, true);
-                document.ontouchend = () => { document.ontouchmove = null; sendData(true); };
-            };
-            ui.thumbMax.ontouchstart = (e) => {
-                document.ontouchmove = (ev) => handleDrag(ev, false);
-                document.ontouchend = () => { document.ontouchmove = null; sendData(true); };
-            };
-        }
-
-        initDualSlider();
-
-        // --- DATA IO ---
+        // --- DATA HELPERS ---
         function rgbToHex(rgb) {
             if(!Array.isArray(rgb)) return "#ffffff"; 
             return "#" + ((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1);
@@ -339,18 +608,12 @@
         }
 
         function saveToState(sendSaveCmd) {
-            const color = hexToRgb(ui.color.value);
             if(currentMode === 'solid') {
-                appState.solid_color = color;
-                appState.solid_bright = parseFloat(ui.solidBright.value);
-                ui.valSolid.innerText = Math.round(appState.solid_bright*100) + "%";
+                appState.solid_color = hexToRgb(ui.colorSolid.value);
             } else {
-                appState.fade_color = color;
+                appState.fade_color = hexToRgb(ui.colorFade1.value);
+                appState.fade_color_2 = hexToRgb(ui.colorFade2.value);
                 appState.fade_use_2 = ui.checkFade2.checked;
-                appState.fade_color_2 = hexToRgb(ui.color2.value);
-                
-                appState.fade_speed = parseFloat(ui.fadeSpeed.value);
-                ui.valSpeed.innerText = appState.fade_speed + "x";
             }
             sendData(sendSaveCmd);
         }
@@ -369,48 +632,34 @@
                 fade_speed: appState.fade_speed,
                 save: save
             };
-            sendRaw(payload);
+            try { await writer.write(JSON.stringify(payload)); } 
+            catch(e) { ui.status.innerText = "Error Sending"; }
         }
 
-        async function sendRaw(payload) {
-            if (!writer) return;
-            try {
-                await writer.write(JSON.stringify(payload));
-            } catch(e) {
-                 ui.status.innerText = "Error Sending - Check Connection";
-            }
-        }
-
+        // --- LISTENERS ---
         ['input'].forEach(evt => {
-            ui.color.addEventListener(evt, () => saveToState(false));
-            ui.solidBright.addEventListener(evt, () => saveToState(false));
-            ui.fadeSpeed.addEventListener(evt, () => saveToState(false));
-            ui.color2.addEventListener(evt, () => saveToState(false));
+            ui.colorSolid.addEventListener(evt, () => saveToState(false));
+            ui.colorFade1.addEventListener(evt, () => saveToState(false));
+            ui.colorFade2.addEventListener(evt, () => saveToState(false));
         });
-        
         ['change'].forEach(evt => {
-            ui.color.addEventListener(evt, () => saveToState(true));
-            ui.solidBright.addEventListener(evt, () => saveToState(true));
-            ui.fadeSpeed.addEventListener(evt, () => saveToState(true));
-            ui.color2.addEventListener(evt, () => saveToState(true));
+            ui.colorSolid.addEventListener(evt, () => saveToState(true));
+            ui.colorFade1.addEventListener(evt, () => saveToState(true));
+            ui.colorFade2.addEventListener(evt, () => saveToState(true));
             ui.checkFade2.addEventListener(evt, () => {
-                saveToState(true); 
-                updateUI();        
+                saveToState(true); updateUI();        
             });
         });
 
         document.getElementById('defaultBtn').addEventListener('click', () => {
            appState = {
                 solid_color: [255, 230, 0], solid_bright: 0.8,
-                // Updated Defaults
-                fade_color: [255, 200, 0], 
-                fade_color_2: [255, 220, 0], 
-                fade_use_2: true,
-                fade_min: 0.1, fade_max: 0.9, fade_speed: 0.9
+                fade_color: [255, 200, 0], fade_color_2: [255, 220, 0], 
+                fade_use_2: true, fade_min: 0.1, fade_max: 0.9, fade_speed: 0.9
            };
            setMode('solid'); 
         });
-        
+
     </script>
 </body>
 </html>
