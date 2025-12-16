@@ -269,7 +269,7 @@
         <div class="status" id="statusText">Ready to connect</div>
     </div>
 
-    <div class="version">v1.4</div>
+    <div class="version">v1.5</div>
 
     <!-- LOGIC -->
     <script>
@@ -434,6 +434,30 @@
             }
         }
 
+        // --- DATA IO ---
+        async function sendRaw(payload) {
+            if (!writer) return;
+            try { await writer.write(JSON.stringify(payload)); } 
+            catch(e) { ui.status.innerText = "Error Sending"; }
+        }
+
+        async function sendData(save) {
+            if (!writer) return;
+            const payload = {
+                mode: currentMode,
+                solid_color: appState.solid_color,
+                solid_bright: appState.solid_bright,
+                fade_color: appState.fade_color,
+                fade_color_2: appState.fade_color_2,
+                fade_use_2: appState.fade_use_2,
+                fade_min: appState.fade_min,
+                fade_max: appState.fade_max,
+                fade_speed: appState.fade_speed,
+                save: save
+            };
+            sendRaw(payload);
+        }
+
         // --- GENERIC SLIDER HANDLER ---
         function initSlider(config) {
             /* 
@@ -526,8 +550,6 @@
                 container.addEventListener('mousedown', (e) => {
                     if(e.target === thumb) return;
                     handleDrag(e); 
-                    // We need to trigger the end listener manually or just save immediately?
-                    // Simpler to just save immediately for clicks
                     sendData(true); 
                 });
             } else {
@@ -616,24 +638,6 @@
                 appState.fade_use_2 = ui.checkFade2.checked;
             }
             sendData(sendSaveCmd);
-        }
-
-        async function sendData(save) {
-            if (!writer) return;
-            const payload = {
-                mode: currentMode,
-                solid_color: appState.solid_color,
-                solid_bright: appState.solid_bright,
-                fade_color: appState.fade_color,
-                fade_color_2: appState.fade_color_2,
-                fade_use_2: appState.fade_use_2,
-                fade_min: appState.fade_min,
-                fade_max: appState.fade_max,
-                fade_speed: appState.fade_speed,
-                save: save
-            };
-            try { await writer.write(JSON.stringify(payload)); } 
-            catch(e) { ui.status.innerText = "Error Sending"; }
         }
 
         // --- LISTENERS ---
