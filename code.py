@@ -56,6 +56,157 @@ def load_state():
 
 load_state()
 
+# --- WIFI / HTTP (optional on Pico W) ---
+try:
+    import wifi
+    import socketpool
+    wifi_available = True
+except Exception:
+    wifi_available = False
+
+http_server = None
+pool = None
+
+
+def save_wifi_creds(ssid, password):
+    try:
+        with open('/wifi.json','w') as f:
+            json.dump({'ssid': ssid, 'pass': password}, f)
+    except: pass
+
+
+def load_wifi_creds():
+    try:
+        with open('/wifi.json','r') as f:
+            return json.load(f)
+    except: return None
+
+
+def start_http_server():
+    global http_server, pool
+    if not wifi_available:
+        return
+    try:
+        pool = socketpool.SocketPool(wifi.radio)
+        server = pool.socket(pool.AF_INET, pool.SOCK_STREAM)
+        server.setsockopt(pool.SOL_SOCKET, pool.SO_REUSEADDR, 1)
+        server.bind(('0.0.0.0', 80))
+        server.listen(1)
+        server.settimeout(0)
+        http_server = server
+        print("HTTP server started")
+    except Exception as e:
+        print("HTTP server failed:", e)
+        http_server = None
+
+
+def send_http(client, status_code, content_type, body):
+    try:
+        status_text = 'OK' if status_code == 200 else 'ERROR'
+        header = f"HTTP/1.1 {status_code} {status_text}\r\nContent-Type: {content_type}\r\nContent-Length: {len(body.encode())}\r\nConnection: close\r\n\r\n"
+        client.send(header.encode())
+        client.send(body.encode())
+    except Exception:
+        pass
+    try:
+        client.close()
+    except:
+        pass
+
+
+def handle_http_client(client):
+    try:
+        client.settimeout(1)
+        req = b''
+        while True:
+            try:
+                chunk = client.recv(512)
+                if not chunk:
+                    break
+                req += chunk
+                if b'\r\n\r\n' in req:
+                    break
+            except Exception:
+                break
+        req_str = req.decode('utf-8', 'ignore')
+        first_line = req_str.split('\r\n',1)[0]
+        parts = first_line.split(' ')
+        if len(parts) < 2:
+            send_http(client, 400, 'text/plain', 'Bad Request')
+            return
+        method, path = parts[0], parts[1]
+        body = ''
+        if 'Content-Length:' in req_str:
+            try:
+                cl = int(req_str.split('Content-Length:')[1].split('\r\n')[0].strip())
+                header_end = req_str.find('\r\n\r\n')
+                body = req_str[header_end+4:]
+                while len(body.encode()) < cl:
+                    chunk = client.recv(512)
+                    if not chunk: break
+                    body += chunk.decode('utf-8','ignore')
+            except:
+                body = ''
+        if method == 'GET' and path == '/state':
+            send_http(client, 200, 'application/json', json.dumps(state))
+        elif method == 'POST' and path == '/state':
+            try:
+                data = json.loads(body) if body else {}
+                for k in state:
+                    if k in data: state[k] = data[k]
+                if 'save' in data and data['save']:
+                    save_state()
+                send_http(client, 200, 'application/json', json.dumps({'ok': True}))
+            except:
+                send_http(client, 400, 'application/json', json.dumps({'ok': False}))
+        elif method == 'POST' and path == '/wifi':
+            try:
+                data = json.loads(body) if body else {}
+                ssid = data.get('ssid')
+                password = data.get('pass') or data.get('password')
+                if ssid:
+                    try:
+                        wifi.radio.connect(ssid, password)
+                        save_wifi_creds(ssid, password)
+                        ip = str(wifi.radio.ipv4_address)
+                        send_http(client, 200, 'application/json', json.dumps({'ok': True, 'ip': ip}))
+                    except Exception as e:
+                        send_http(client, 500, 'application/json', json.dumps({'ok': False, 'error': str(e)}))
+                else:
+                    send_http(client, 400, 'application/json', json.dumps({'ok': False, 'error': 'missing ssid'}))
+            except:
+                send_http(client, 400, 'application/json', json.dumps({'ok': False}))
+        elif method == 'GET' and path == '/health':
+            send_http(client, 200, 'application/json', json.dumps({'ok': True}))
+        else:
+            send_http(client, 404, 'text/plain', 'Not Found')
+    except Exception as e:
+        try: client.close()
+        except: pass
+
+
+# If wifi available and stored creds exist, attempt connect and start server
+if wifi_available:
+    creds = load_wifi_creds()
+    if creds:
+        try:
+            wifi.radio.connect(creds.get('ssid'), creds.get('pass'))
+            print("Connected to stored WiFi", wifi.radio.ipv4_address)
+            start_http_server()
+            # Optional mDNS advertisement if available
+            try:
+                import adafruit_mdns
+                try:
+                    mdns = adafruit_mdns.Server(wifi.radio)
+                    mdns.register_service('_http._tcp', 80, {'name':'zonai'})
+                    print('mDNS: advertised as zonai.local')
+                except Exception:
+                    print('mDNS registration failed')
+            except Exception:
+                pass
+        except Exception as e:
+            print("WiFi connect failed:", e)
+
 # --- HELPERS ---
 def correct(rgb, br=1.0):
     if not isinstance(rgb, (list, tuple)): return (0,0,0)
@@ -165,10 +316,19 @@ while True:
                     for k in state:
                         if k in cmd: state[k] = cmd[k]
                     if "save" in cmd and cmd["save"]: save_state()
-                    if "get_state" in cmd: 
+                    if "get_state" in cmd:
                         serial.write((json.dumps(state) + "\n").encode())
                 except: pass
             buffer = buffer[end+1:]
+
+    # Handle HTTP clients (non-blocking) if available
+    if wifi_available and http_server:
+        try:
+            client, addr = http_server.accept()
+            if client:
+                handle_http_client(client)
+        except Exception:
+            pass
 
     update_leds()
     time.sleep(0.005)
