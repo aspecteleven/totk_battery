@@ -99,6 +99,8 @@ let keepReading = false;
 let isConnected = false;
 let isOfflineMode = false;
 let serialBuffer = "";
+let pendingSerialWifi = null; // { timeout }
+let settingsOverlay = null;
 
 // Asset base (for CDN or GitHub Pages) and comms mode
 let ASSET_BASE = localStorage.getItem('asset_base') || '';
@@ -292,15 +294,45 @@ function handleSerialData(text) {
 
 function parseJSON(text) {
     try {
-        if(text.indexOf('{') > -1) {
+        if (text.indexOf('{') > -1) {
             let jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}')+1);
             let d = JSON.parse(jsonStr);
-            Object.assign(appState, d);
-            // Force UI Update on sync
-            if(ui.modeSelect.value !== appState.mode) ui.modeSelect.value = appState.mode;
-            if(isConnected) drawControls(); 
+
+            // Handle control responses (non-state messages)
+            if (d && typeof d === 'object') {
+                // WiFi serial response handling
+                if ('ok' in d) {
+                    const ws = document.getElementById('wifiStatus');
+                    if (d.ok) {
+                        if (d.ip) {
+                            if (ws) ws.innerText = `Connected: ${d.ip}`;
+                            storedDeviceIP = d.ip; localStorage.setItem('device_ip', storedDeviceIP);
+                            if (deviceIpInput) deviceIpInput.value = storedDeviceIP;
+                        } else {
+                            if (ws) ws.innerText = 'OK';
+                        }
+                        if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
+                        pendingSerialWifi = null;
+                        // close settings modal and sync
+                        hideSettingsModal();
+                        comms.requestState();
+                    } else {
+                        if (ws) ws.innerText = `Failed: ${d.error || 'unknown'}`;
+                        if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
+                        pendingSerialWifi = null;
+                    }
+                }
+
+                // Merge only known appState keys
+                let changed = false;
+                for (let k in d) {
+                    if (k in appState) { appState[k] = d[k]; changed = true; }
+                }
+                if (d.mode && ui.modeSelect.value !== d.mode) ui.modeSelect.value = d.mode;
+                if (changed && (isConnected || comms.resolveMode() === 'http')) drawControls();
+            }
         }
-    } catch(e) {}
+    } catch (e) { console.warn('parseJSON error', e); }
 }
 
 async function sendRaw(payload) {
@@ -604,7 +636,9 @@ async function submitWifi(ssid, pass) {
         // Fallback over serial
         try {
             sendRaw({ wifi: { ssid: ssid, pass: pass } });
-            ui.wifiStatus.innerText = 'Sent via serial';
+            ui.wifiStatus.innerText = 'Sent via serial — waiting for device...';
+            if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
+            pendingSerialWifi = { timeout: setTimeout(() => { ui.wifiStatus.innerText = 'No response (serial)'; pendingSerialWifi = null; }, 8000) };
         } catch (e) { ui.wifiStatus.innerText = 'Serial send failed'; }
         return;
     }
@@ -619,6 +653,8 @@ async function submitWifi(ssid, pass) {
                 ui.wifiStatus.innerText = `Connected: ${j.ip || ''}`;
                 if (j.ip) { storedDeviceIP = j.ip; localStorage.setItem('device_ip', storedDeviceIP); if (deviceIpInput) deviceIpInput.value = storedDeviceIP; }
                 comms.requestState();
+                // close modal on success
+                hideSettingsModal();
                 return;
             } else {
                 ui.wifiStatus.innerText = `Failed: ${j.error || resp.status}`;
@@ -628,12 +664,19 @@ async function submitWifi(ssid, pass) {
     ui.wifiStatus.innerText = 'No device responded';
 }
 
-function showWifiModal() { document.getElementById('wifiModal').classList.remove('hidden'); document.getElementById('wifiStatus').innerText=''; }
-function hideWifiModal() { document.getElementById('wifiModal').classList.add('hidden'); }
+function showSettingsModal() {
+    const ov = document.getElementById('settingsOverlay'); if(ov) ov.classList.remove('hidden');
+    const ws = document.getElementById('wifiStatus'); if(ws) ws.innerText='';
+    const assetEl = document.getElementById('assetBase'); if (assetEl) assetEl.value = ASSET_BASE || document.getElementById('githubUrl')?.value || '';
+    const deviceIpEl = document.getElementById('deviceIp'); if (deviceIpEl) deviceIpEl.value = storedDeviceIP || '';
+}
+function hideSettingsModal() { const ov = document.getElementById('settingsOverlay'); if(ov) ov.classList.add('hidden'); }
 
-const wifiBtn = document.getElementById('wifiBtn');
-if (wifiBtn) wifiBtn.addEventListener('click', showWifiModal);
-const wifiCancel = document.getElementById('wifiCancel'); if (wifiCancel) wifiCancel.addEventListener('click', hideWifiModal);
+const settingsBtn = document.getElementById('settingsBtn'); if (settingsBtn) settingsBtn.addEventListener('click', showSettingsModal);
+const settingsClose = document.getElementById('settingsClose'); if (settingsClose) settingsClose.addEventListener('click', hideSettingsModal);
+const settingsOverlayEl = document.getElementById('settingsOverlay'); if (settingsOverlayEl) settingsOverlayEl.addEventListener('click', (e) => { if (e.target === settingsOverlayEl) hideSettingsModal(); });
+
+const wifiCancel = document.getElementById('wifiCancel'); if (wifiCancel) wifiCancel.addEventListener('click', hideSettingsModal);
 const wifiSubmit = document.getElementById('wifiSubmit'); if (wifiSubmit) wifiSubmit.addEventListener('click', async () => {
     const ssid = document.getElementById('wifi_ssid').value.trim();
     const pass = document.getElementById('wifi_pass').value;

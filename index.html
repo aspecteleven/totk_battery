@@ -5,183 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shrine Lantern Controller</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- styles moved to styles.css -->
-        /* styles removed; see styles.css */
-
-        /* styles removed; see styles.css */
-
-        /* styles removed; see styles.css */
-        #introScreen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #10222e; z-index: 500;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-
-        .intro-symbol {
-            width: 600px; height: 600px;
-            max-width: 90vw; max-height: 50vh;
-            background: url("images/symbol.png") no-repeat center;
-            background-size: contain;
-            margin-bottom: 40px;
-            filter: drop-shadow(0 0 20px var(--accent-dim));
-            animation: pulseSymbol 6s infinite ease-in-out;
-        }
-
-        @keyframes pulseSymbol {
-            0%, 100% { opacity: 0.8; transform: scale(1); filter: drop-shadow(0 0 10px var(--accent-dim)); }
-            50% { opacity: 1; transform: scale(1.02); filter: drop-shadow(0 0 40px var(--accent)); }
-        }
-
-        .intro-text-area {
-            text-align: center; width: 100%; height: 200px;
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 20px;
-        }
-
-        .intro-prompt { font-size: 18px; letter-spacing: 2px; color: #fff; text-transform: uppercase; font-weight: 300; }
-        
-        .char-reveal {
-            display: inline-block;
-            opacity: 0;
-            animation: charFade 2s forwards;
-            white-space: pre;
-            color: #ccc;
-            font-size: 36px;
-            letter-spacing: 1px;
-            font-weight: 300;
-        }
-        
-        .char-highlight {
-            color: var(--accent-light);
-            text-shadow: 0 0 15px var(--accent);
-            font-weight: 500;
-        }
-
-        @keyframes charFade { to { opacity: 1; } }
-
-        .intro-welcome { 
-            display: block; 
-            max-width: 900px; line-height: 1.4; 
-        }
-
-        #nameInput {
-            background: rgba(0,0,0,0.5); border: 1px solid var(--accent-dim);
-            color: var(--accent); padding: 10px 20px; font-size: 24px; text-align: center;
-            border-radius: 4px; outline: none; width: 350px; text-transform: uppercase;
-            letter-spacing: 2px; transition: 0.3s;
-        }
-        #nameInput:focus { border-color: var(--accent); box-shadow: 0 0 15px rgba(91, 192, 207, 0.3); }
-
-        .intro-btn {
-            background: var(--accent); color: #10222e; border: none;
-            padding: 12px 40px; font-weight: bold; text-transform: uppercase;
-            letter-spacing: 2px; cursor: pointer; margin-top: 30px;
-            border-radius: 2px; opacity: 0; transform: translateY(10px);
-            transition: 1s; pointer-events: none; font-size: 16px;
-        }
-        .intro-btn.visible { opacity: 1; transform: translateY(0); pointer-events: all; }
-        .intro-btn:hover { background: #fff; box-shadow: 0 0 20px #fff; }
-
-        .mist-out { animation: mistVanish 2.5s forwards; }
-        @keyframes mistVanish {
-            0% { opacity: 1; filter: blur(0px); transform: scale(1); }
-            30% { opacity: 0.9; filter: blur(5px); transform: scale(1.02); }
-            100% { opacity: 0; filter: blur(50px); transform: scale(1.15); visibility: hidden; }
-        }
-
-        /* --- MAIN APP --- */
-        #mainApp { opacity: 0; }
-        #mainApp.visible { opacity: 1; }
-
-        /* --- ARTWORK LAYERS --- */
-        .container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        .stones { position: absolute; width: 261px; height: 100%; top: 0; z-index: 10; mix-blend-mode: lighten; }
-        .stone_overlay { position: absolute; width: 500px; height: 100%; z-index: 9; }
-        .stone_overlay_left { left: 0; background: url("images/stone_overlay_left.webp") no-repeat left; background-size: auto 100%; }
-        .stone_overlay_right { right: 0; background: url("images/stone_overlay_right.webp") no-repeat right; background-size: auto 100%; }
-        .stone_left { left: 0; background: url("images/stone_left.webp") no-repeat left; background-size: auto 100%; }
-        .stone_right { right: 0; background: url("images/stone_right.webp") no-repeat right; background-size: auto 100%; }
-        .elements { position: absolute; width: 100%; height: 80px; left: 0; z-index: 5; }
-        .elements_top { top: 0; background: url("images/elements_top.png"); }
-        .elements_bottom { bottom: 0; background: url("images/elements_bottom.png"); opacity: .6; }
-
-        .battery_container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; z-index: 20; pointer-events: none; }
-        .battery_display { position: relative; width: 474px; height: 779px; }   
-        .battery_body { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url("images/battery_body_dark.png") no-repeat; z-index: 21; }
-        .battery_glass { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url("images/battery_glass.png") no-repeat; z-index: 22; }
-        
-        .battery_glass_glow {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 23;
-            background: radial-gradient(circle, rgba(var(--glow-rgb), var(--glow-opacity)) 0%, rgba(var(--glow-rgb), var(--glow-opacity)) 100%);
-            -webkit-mask-image: url("images/battery_glass_mask_glow.png"); mask-image: url("images/battery_glass_mask_glow.png");
-            -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;
-            mix-blend-mode: overlay; 
-        }
-        
-        .battery_glass_glow_overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url("images/battery_glass.png") no-repeat; z-index: 24;
-            opacity: .5; mix-blend-mode: multiply;
-        }
-        .battery_glass_glow_overlay:before {
-            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: url("images/battery_glass_mask_glow.png") no-repeat;
-            filter: drop-shadow(0 0 10px rgba(var(--glow-rgb), var(--glow-opacity))) 
-                    drop-shadow(0 0 150px rgba(var(--glow-rgb), var(--glow-opacity))) 
-                    drop-shadow(0 0 50px rgba(255, 255, 255, var(--glow-opacity)));
-            transition: filter 0.1s;
-        }
-
-        /* --- DASHBOARD --- */
-        .control-panel {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 900px; max-width: 95vw; height: 140px;
-            background: var(--panel-bg); border: 2px solid var(--accent-dim); border-radius: 16px;
-            padding: 15px 25px; z-index: 100; backdrop-filter: blur(8px);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-            display: flex; align-items: center; justify-content: space-between; gap: 20px;
-        }
-        h1 { position: absolute; top: -30px; left: 20px; font-weight: 300; letter-spacing: 4px; color: var(--accent); font-size: 14px; text-shadow: 0 0 5px black; }
-
-        .sec-system { width: 140px; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 20px; display: flex; flex-direction: column; justify-content: center; height: 100%; }
-        #connToggle {
-            width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid var(--accent); border-radius: 6px;
-            font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 12px; transition: 0.3s;
-        }
-        .btn-connect { background: rgba(0,255,0,0.1); color: var(--text); border-color: #4CAF50; }
-        .btn-connect:hover { background: #4CAF50; color: #000; }
-        .btn-disconnect { background: rgba(255, 0, 0, 0.1); color: #ff6b6b; border-color: #ff6b6b; }
-        .btn-disconnect:hover { background: #ff6b6b; color: #000; }
-        select { width: 100%; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid #444; color: #aaa; border-radius: 4px; font-family: inherit; font-size: 11px; cursor: pointer; }
-        select option {
-            background-color: #10222e;
-            color: var(--accent);
-            padding: 10px;
-        }
-        select:focus { outline: none; border-color: var(--accent); color: var(--accent); }
-
-        .sec-controls { flex: 1; display: flex; align-items: center; justify-content: space-around; gap: 20px; padding: 0 10px; }
-        .control-group { display: flex; flex-direction: column; min-width: 90px; }
-        label { font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;}
-        input[type="color"] { width: 70px; height: 35px; border: 1px solid var(--accent-dim); background: none; cursor: pointer; border-radius: 4px; }
-        input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; margin-left: 5px; }
-
-        .sec-actions { border-left: 1px solid rgba(255,255,255,0.1); padding-left: 20px; display: flex; flex-direction: column; justify-content: space-between; height: 60%; }
-        #defaultBtn { background: transparent; border: 1px solid #555; color: #777; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 10px; text-transform: uppercase; }
-        #defaultBtn:hover { background: #333; color: #fff; }
-        #defaultBtn:disabled { opacity: 0.2; cursor: not-allowed; }
-        .status { font-size: 10px; color: #555; text-align: right; margin-top: auto; }
-
-        /* SLIDERS */
-        .custom-slider-container { position: relative; height: 20px; width: 100%; min-width: 140px; margin-top: 5px; cursor: pointer; }
-        .custom-slider-track { position: absolute; top: 8px; left: 0; right: 0; height: 4px; background: #333; border-radius: 2px; }
-        .custom-slider-highlight { position: absolute; top: 8px; height: 4px; background: var(--accent); z-index: 1; box-shadow: 0 0 5px var(--accent); }
-        .thumb { position: absolute; top: 0px; width: 20px; height: 20px; background: #10222e; border: 2px solid var(--accent); border-radius: 50%; z-index: 3; cursor: grab; box-shadow: 0 0 5px #000; }
-        .thumb:active { background: var(--accent); }
-        .custom-slider-container.disabled .custom-slider-highlight { background: #555; box-shadow: none; }
-        .custom-slider-container.disabled .thumb { border-color: #555; cursor: not-allowed; }
-
-        .hidden { display: none !important; }
-        .version { position: fixed; bottom: 5px; right: 10px; color: rgba(255,255,255,0.3); font-size: 10px; pointer-events: none;z-index:100; }
-
+    <!-- styles moved to styles.css; inline CSS removed to avoid duplication -->
 </head>
 <body>
 
@@ -237,25 +61,49 @@
 
             <div class="dashboard-section sec-actions">
                 <button id="defaultBtn" disabled>Defaults</button>
-                <input type="text" id="assetBase" placeholder="Asset base (e.g. https://user.github.io/shrine-battery/)" style="width:180px;padding:6px;font-size:11px;border-radius:4px;border:1px solid #444;background:rgba(0,0,0,0.2);color:#ccc;" />
-                <button id="applyAssetsBtn" style="padding:6px;border-radius:4px;font-size:11px;">Apply</button>
-                <button id="wifiBtn" style="padding:6px;border-radius:4px;font-size:11px;margin-left:6px;">WiFi</button>
-                <input type="text" id="deviceIp" placeholder="Device IP (optional)" style="width:150px;padding:6px;font-size:11px;border-radius:4px;border:1px solid #444;background:rgba(0,0,0,0.2);color:#ccc;" />
-                <button id="pingBtn" style="padding:6px;border-radius:4px;font-size:11px;margin-left:4px;">Ping</button>
+                <button id="settingsBtn" title="Settings" style="padding:8px;border-radius:6px;font-size:16px;">⚙️</button>
                 <div class="status" id="statusText">Ready</div>
             </div>
 
-            <!-- WiFi config modal -->
-            <div id="wifiModal" class="hidden" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#08121a;padding:20px;border-radius:8px;border:1px solid #333;z-index:600;min-width:320px;">
-                <h3 style="margin:0 0 10px 0;color:var(--accent);">Configure WiFi</h3>
-                <div style="display:flex;flex-direction:column;gap:8px;">
-                    <input id="wifi_ssid" placeholder="SSID" style="padding:8px;border-radius:4px;border:1px solid #444;background:#07121a;color:#ccc;" />
-                    <input id="wifi_pass" placeholder="Password" type="password" style="padding:8px;border-radius:4px;border:1px solid #444;background:#07121a;color:#ccc;" />
-                    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
-                        <button id="wifiCancel" style="padding:6px;border-radius:4px;font-size:11px;">Cancel</button>
-                        <button id="wifiSubmit" style="padding:6px;border-radius:4px;font-size:11px;">Connect</button>
+            <!-- Settings overlay (WiFi, Device IP, Assets) -->
+            <div id="settingsOverlay" class="hidden" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:600;padding:20px;">
+                <div id="settingsModal" style="background:#08121a;padding:18px;border-radius:8px;border:1px solid #333;min-width:320px;max-width:640px;position:relative;color:#ccc;">
+                    <button id="settingsClose" title="Close" style="position:absolute;top:8px;right:8px;padding:6px;border-radius:6px;background:transparent;color:#ccc;border:none;cursor:pointer;">✕</button>
+                    <h3 style="margin:0 0 10px 0;color:var(--accent);">Settings</h3>
+
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <label style="font-size:12px;color:#aaa;">GitHub Pages URL
+                            <input id="githubUrl" value="https://aspecteleven.github.io/totk_battery/" style="width:100%;margin-top:6px;padding:8px;border-radius:4px;border:1px solid #444;background:#07121a;color:#ccc;" />
+                        </label>
+
+                        <label style="font-size:12px;color:#aaa;">Asset Base
+                            <div style="display:flex;gap:8px;margin-top:6px;">
+                                <input id="assetBase" placeholder="Asset base (optional)" style="flex:1;padding:8px;border-radius:4px;border:1px solid #444;background:#07121a;color:#ccc;" />
+                                <button id="applyAssetsBtn" style="padding:8px;border-radius:4px;">Apply</button>
+                            </div>
+                        </label>
+
+                        <hr style="border:none;border-top:1px solid #222;margin:6px 0;" />
+
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <label style="font-size:12px;color:#aaa;min-width:80px;">Device IP</label>
+                            <input id="deviceIp" placeholder="Device IP (optional)" style="flex:1;padding:8px;border-radius:4px;border:1px solid #444;background:#07121a;color:#ccc;" />
+                            <button id="pingBtn" style="padding:8px;border-radius:4px;">Ping</button>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #222;margin:6px 0;" />
+
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div style="font-size:12px;color:#aaa;">WiFi Configuration</div>
+                        </div>
+                        <input id="wifi_ssid" placeholder="SSID" style="padding:8px;border-radius:4px;border:1px solid #444;background:#07121a;color:#ccc;" />
+                        <input id="wifi_pass" placeholder="Password" type="password" style="padding:8px;border-radius:4px;border:1px solid #444;background:#07121a;color:#ccc;" />
+                        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+                            <button id="wifiCancel" style="padding:8px;border-radius:4px;">Cancel</button>
+                            <button id="wifiSubmit" style="padding:8px;border-radius:4px;">Connect</button>
+                        </div>
+                        <div id="wifiStatus" style="font-size:12px;color:#aaa;margin-top:6px;"></div>
                     </div>
-                    <div id="wifiStatus" style="font-size:12px;color:#aaa;margin-top:6px;"></div>
                 </div>
             </div>
         </div>
