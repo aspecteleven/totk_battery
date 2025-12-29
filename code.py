@@ -1,4 +1,4 @@
-# VERSION = "v2.4"
+# VERSION = "v2.5"
 import board
 import neopixel
 import json
@@ -72,6 +72,12 @@ diag_enabled = False
 diag_interval = 0.5
 last_diag = 0.0
 
+# --- WIFI SETUP (AP MODE) ---
+AP_SSID = "Zonai-Lantern-Setup"
+AP_PASSWORD = None
+wifi_mode = "off"  # off|sta|ap
+mdns_server = None
+
 
 def save_wifi_creds(ssid, password):
     try:
@@ -92,6 +98,10 @@ def start_http_server():
     if not wifi_available:
         return
     try:
+        if http_server:
+            try: http_server.close()
+            except Exception: pass
+            http_server = None
         pool = socketpool.SocketPool(wifi.radio)
         server = pool.socket(pool.AF_INET, pool.SOCK_STREAM)
         server.setsockopt(pool.SOL_SOCKET, pool.SO_REUSEADDR, 1)
@@ -105,6 +115,45 @@ def start_http_server():
         http_server = None
 
 
+def start_mdns():
+    global mdns_server
+    try:
+        import adafruit_mdns
+        try:
+            mdns_server = adafruit_mdns.Server(wifi.radio)
+            mdns_server.register_service('_http._tcp', 80, {'name':'zonai'})
+            print('mDNS: advertised as zonai.local')
+        except Exception:
+            print('mDNS registration failed')
+    except Exception:
+        pass
+
+
+def start_ap_mode():
+    global wifi_mode
+    if not wifi_available:
+        return
+    try:
+        try:
+            wifi.radio.stop_ap()
+        except Exception:
+            pass
+        if AP_PASSWORD:
+            wifi.radio.start_ap(AP_SSID, AP_PASSWORD)
+        else:
+            wifi.radio.start_ap(AP_SSID)
+        wifi_mode = "ap"
+        start_http_server()
+        try: append_log("AP: " + AP_SSID)
+        except Exception: pass
+        try:
+            print("AP mode:", AP_SSID, wifi.radio.ipv4_address_ap)
+        except Exception:
+            print("AP mode:", AP_SSID)
+    except Exception as e:
+        print("AP start failed:", e)
+
+
 # --- LOG BUFFER ---
 LOG_BUFFER = []
 LOG_MAX = 200
@@ -116,6 +165,63 @@ def append_log(s):
     except Exception:
         pass
 
+
+WIFI_SETUP_HTML = """<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zonai Lantern Setup</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#08121a; color:#e0e0e0; margin:0; padding:24px; }
+    .card { max-width:480px; margin:0 auto; background:#0c1a24; border:1px solid #223; border-radius:10px; padding:18px; }
+    h1 { font-size:18px; margin:0 0 10px 0; color:#ffd86b; }
+    label { font-size:12px; color:#aaa; display:block; margin:10px 0 6px; }
+    input { width:100%; padding:10px; border-radius:6px; border:1px solid #334; background:#07121a; color:#e0e0e0; }
+    button { margin-top:12px; padding:10px 14px; border-radius:6px; border:1px solid #445; background:#1c2e3d; color:#e0e0e0; }
+    .note { font-size:12px; color:#9aa; margin-top:10px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Zonai Lantern WiFi Setup</h1>
+    <form method="POST" action="/wifi">
+      <label for="ssid">SSID</label>
+      <input id="ssid" name="ssid" placeholder="Network name" required>
+      <label for="pass">Password</label>
+      <input id="pass" name="pass" type="password" placeholder="Password">
+      <button type="submit">Connect</button>
+    </form>
+    <div class="note">After connecting, return to the GitHub Pages UI to control the lantern.</div>
+    <div class="note">If you lose this page, reconnect to the setup network and try again.</div>
+  </div>
+</body>
+</html>
+"""
+
+def url_decode(s):
+    s = s.replace('+', ' ')
+    out = ''
+    i = 0
+    while i < len(s):
+        if s[i] == '%' and i + 2 < len(s):
+            try:
+                out += chr(int(s[i+1:i+3], 16))
+                i += 3
+                continue
+            except Exception:
+                pass
+        out += s[i]
+        i += 1
+    return out
+
+def parse_form(body):
+    data = {}
+    for part in body.split('&'):
+        if '=' in part:
+            k, v = part.split('=', 1)
+            data[url_decode(k)] = url_decode(v)
+    return data
 
 def send_http(client, status_code, content_type, body):
     try:
@@ -132,6 +238,7 @@ def send_http(client, status_code, content_type, body):
 
 
 def handle_http_client(client):
+    global wifi_mode
     try:
         client.settimeout(1)
         req = b''
@@ -164,7 +271,12 @@ def handle_http_client(client):
                     body += chunk.decode('utf-8','ignore')
             except:
                 body = ''
-        if method == 'GET' and path == '/state':
+        if method == 'GET' and (path == '/' or path == '/index.html'):
+            if wifi_mode == "ap":
+                send_http(client, 200, 'text/html', WIFI_SETUP_HTML)
+            else:
+                send_http(client, 200, 'text/plain', 'Zonai Lantern API is running.')
+        elif method == 'GET' and path == '/state':
             send_http(client, 200, 'application/json', json.dumps(state))
         elif method == 'POST' and path == '/state':
             try:
@@ -178,23 +290,50 @@ def handle_http_client(client):
                 send_http(client, 400, 'application/json', json.dumps({'ok': False}))
         elif method == 'POST' and path == '/wifi':
             try:
-                data = json.loads(body) if body else {}
+                data = {}
+                is_json = False
+                if body:
+                    if body.strip().startswith('{'):
+                        data = json.loads(body)
+                        is_json = True
+                    else:
+                        data = parse_form(body)
                 ssid = data.get('ssid')
                 password = data.get('pass') or data.get('password')
                 if ssid:
+                    was_ap = (wifi_mode == "ap")
+                    if was_ap:
+                        try: wifi.radio.stop_ap()
+                        except Exception: pass
                     try:
                         wifi.radio.connect(ssid, password)
+                        wifi_mode = "sta"
                         save_wifi_creds(ssid, password)
+                        start_http_server()
+                        start_mdns()
                         ip = str(wifi.radio.ipv4_address)
-                        send_http(client, 200, 'application/json', json.dumps({'ok': True, 'ip': ip}))
+                        if is_json:
+                            send_http(client, 200, 'application/json', json.dumps({'ok': True, 'ip': ip}))
+                        else:
+                            body_html = "<html><body>Connected. IP: %s</body></html>" % ip
+                            send_http(client, 200, 'text/html', body_html)
                     except Exception as e:
-                        send_http(client, 500, 'application/json', json.dumps({'ok': False, 'error': str(e)}))
+                        if is_json:
+                            send_http(client, 500, 'application/json', json.dumps({'ok': False, 'error': str(e)}))
+                        else:
+                            body_html = "<html><body>Connect failed: %s</body></html>" % str(e)
+                            send_http(client, 500, 'text/html', body_html)
+                        if was_ap:
+                            start_ap_mode()
                 else:
-                    send_http(client, 400, 'application/json', json.dumps({'ok': False, 'error': 'missing ssid'}))
+                    if is_json:
+                        send_http(client, 400, 'application/json', json.dumps({'ok': False, 'error': 'missing ssid'}))
+                    else:
+                        send_http(client, 400, 'text/html', '<html><body>Missing SSID</body></html>')
             except:
                 send_http(client, 400, 'application/json', json.dumps({'ok': False}))
         elif method == 'GET' and path == '/health':
-            send_http(client, 200, 'application/json', json.dumps({'ok': True}))
+            send_http(client, 200, 'application/json', json.dumps({'ok': True, 'mode': wifi_mode}))
         elif method == 'GET' and path == '/logs':
             try:
                 send_http(client, 200, 'application/json', json.dumps({'logs': LOG_BUFFER}))
@@ -210,24 +349,18 @@ def handle_http_client(client):
 # If wifi available and stored creds exist, attempt connect and start server
 if wifi_available:
     creds = load_wifi_creds()
-    if creds:
+    if creds and creds.get('ssid'):
         try:
             wifi.radio.connect(creds.get('ssid'), creds.get('pass'))
+            wifi_mode = "sta"
             print("Connected to stored WiFi", wifi.radio.ipv4_address)
             start_http_server()
-            # Optional mDNS advertisement if available
-            try:
-                import adafruit_mdns
-                try:
-                    mdns = adafruit_mdns.Server(wifi.radio)
-                    mdns.register_service('_http._tcp', 80, {'name':'zonai'})
-                    print('mDNS: advertised as zonai.local')
-                except Exception:
-                    print('mDNS registration failed')
-            except Exception:
-                pass
+            start_mdns()
         except Exception as e:
             print("WiFi connect failed:", e)
+            start_ap_mode()
+    else:
+        start_ap_mode()
 
 # --- SERIAL HELPERS ---
 # Write a line to both CDC interfaces (data and console) so host receives responses
@@ -466,14 +599,20 @@ while True:
                         except: pass
 
                         # Attempt connection (can block for several seconds)
+                        was_ap = (wifi_mode == "ap")
+                        if was_ap:
+                            try: wifi.radio.stop_ap()
+                            except Exception: pass
                         connect_start = time.monotonic()
                         try:
                             wifi.radio.connect(ssid, password)
+                            wifi_mode = "sta"
                             elapsed = round(time.monotonic() - connect_start, 3)
                             try: append_log('CONNECT-SUCCESS')
                             except: pass
                             save_wifi_creds(ssid, password)
                             start_http_server()
+                            start_mdns()
                             ip = str(wifi.radio.ipv4_address)
                             payload = {"status": "connected", "ok": True, "ip": ip, "done": True}
                             if wifi_seq is not None: payload["wifi_seq"] = wifi_seq
@@ -506,6 +645,8 @@ while True:
                                 except: pass
                             try: time.sleep(0.18)
                             except: pass
+                            if was_ap:
+                                start_ap_mode()
                     except Exception as e:
                         err_payload = {"ok": False, "error": str(e), "done": True}
                         if wifi_seq is not None: err_payload["wifi_seq"] = wifi_seq
@@ -528,7 +669,9 @@ while True:
             last_diag = now_diag
             hb = {"diag": "hb", "t": round(now_diag, 2)}
             try:
-                if wifi_available and wifi.radio.ipv4_address:
+                if wifi_mode == "ap":
+                    hb["ap_ip"] = str(wifi.radio.ipv4_address_ap)
+                elif wifi_available and wifi.radio.ipv4_address:
                     hb["ip"] = str(wifi.radio.ipv4_address)
             except Exception:
                 pass

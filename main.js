@@ -1,7 +1,7 @@
 // --- INTRO LOGIC ---
 // FILE VERSIONS - update these when editing files
-const HTML_VERSION = 'v2.15';
-const JS_VERSION = 'v2.18';
+const HTML_VERSION = 'v2.17';
+const JS_VERSION = 'v2.20';
 const CSS_VERSION = 'v2.3';
 
 const intro = {
@@ -717,7 +717,16 @@ ui.defaults.addEventListener('click', () => {
 const commsSelect = document.getElementById('commsMode');
 if (commsSelect) {
     commsSelect.value = comms.mode;
-    commsSelect.addEventListener('change', (e) => { comms.setMode(e.target.value); ui.status.innerText = `Mode: ${comms.mode}`; comms.requestState(); });
+    commsSelect.addEventListener('change', (e) => {
+        comms.setMode(e.target.value);
+        ui.status.innerText = `Mode: ${comms.mode}`;
+        if (comms.mode === 'http' && !pageAllowsHttpRequests()) {
+            showTempStatus('HTTPS page blocks HTTP device requests', 4000);
+            updateHttpsNotice();
+            return;
+        }
+        comms.requestState();
+    });
 }
 const assetInput = document.getElementById('assetBase');
 const applyAssetsBtn = document.getElementById('applyAssetsBtn');
@@ -737,6 +746,7 @@ if (wifiDiagToggle) {
 
 // If in HTTP preferred mode at startup, try to sync state
 if (comms.resolveMode() === 'http') comms.requestState();
+updateHttpsNotice();
 
 // Device IP persistence and WiFi configuration UI
 let storedDeviceIP = localStorage.getItem('device_ip') || '';
@@ -757,11 +767,23 @@ async function fetchWithTimeout(url, opts={}, timeout=1500) {
     }
 }
 
+function pageAllowsHttpRequests() {
+    let origin = '';
+    try { origin = window.location.origin || ''; } catch (e) { origin = ''; }
+    return origin.startsWith('http://') || origin.startsWith('file://') || origin.includes('localhost') || origin.includes('127.0.0.1') || origin === 'null';
+}
+
+function updateHttpsNotice() {
+    const notice = document.getElementById('httpsNotice');
+    if (!notice) return;
+    notice.style.display = pageAllowsHttpRequests() ? 'none' : 'block';
+}
+
 function getHttpBasesSafe() {
     const bases = [];
     let origin = '';
     try { origin = window.location.origin || ''; } catch (e) { origin = ''; }
-    const pageIsHttp = origin.startsWith('http://') || origin.startsWith('file://') || origin.includes('localhost') || origin.includes('127.0.0.1') || origin === 'null';
+    const pageIsHttp = pageAllowsHttpRequests();
     if (storedDeviceIP && pageIsHttp) bases.push(`http://${storedDeviceIP}`);
     if (pageIsHttp) bases.push('http://zonai.local'); // try mDNS name
     if (pageIsHttp && origin && origin !== 'null') bases.push(origin);
@@ -779,7 +801,13 @@ comms.requestState = async function() {
         return;
     }
     ui.status.innerText = 'Searching (HTTP)...';
-    for (const base of this.getBaseUrls()) {
+    const bases = this.getBaseUrls();
+    if (!bases.length) {
+        ui.status.innerText = 'HTTPS page blocks HTTP device requests';
+        updateHttpsNotice();
+        return;
+    }
+    for (const base of bases) {
         let url = base ? `${base}/state` : '/state';
         // Try twice per base quickly
         for (let attempt = 0; attempt < 2; attempt++) {
@@ -810,7 +838,9 @@ comms.requestState = async function() {
 
 async function requestStateHttpOnly(opts = {}) {
     const updateControls = opts.updateControls !== false;
-    for (const base of getHttpBasesSafe()) {
+    const bases = getHttpBasesSafe();
+    if (!bases.length) return null;
+    for (const base of bases) {
         let url = base ? `${base}/state` : '/state';
         for (let attempt = 0; attempt < 2; attempt++) {
             try {
@@ -861,7 +891,13 @@ async function submitWifi(ssid, pass) {
     }
 
     // HTTP path: try base urls and POST /wifi
-    for (const base of comms.getBaseUrls()) {
+    const bases = comms.getBaseUrls();
+    if (!bases.length) {
+        if (ui.wifiStatus) ui.wifiStatus.innerText = 'HTTPS page blocks HTTP device requests';
+        updateHttpsNotice();
+        return;
+    }
+    for (const base of bases) {
         const url = base ? `${base}/wifi` : '/wifi';
         try {
             const resp = await fetchWithTimeout(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ssid: ssid, pass: pass}) }, 2500);
@@ -887,6 +923,7 @@ function showSettingsModal() {
     const assetEl = document.getElementById('assetBase'); if (assetEl) assetEl.value = ASSET_BASE || document.getElementById('githubUrl')?.value || '';
     const deviceIpEl = document.getElementById('deviceIp'); if (deviceIpEl) deviceIpEl.value = storedDeviceIP || '';
     const diagEl = document.getElementById('wifiDiagToggle'); if (diagEl) diagEl.checked = wifiDiagEnabled;
+    updateHttpsNotice();
     // Hook up log buttons
     const clearBtn = document.getElementById('clearLog'); if (clearBtn) clearBtn.addEventListener('click', () => { const el = document.getElementById('serialLog'); if (el) el.textContent = ''; });
     const downloadBtn = document.getElementById('downloadLog'); if (downloadBtn) downloadBtn.addEventListener('click', () => { const el = document.getElementById('serialLog'); if (!el) return; const blob = new Blob([el.textContent], {type:'text/plain'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'serial_log.txt'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
