@@ -354,6 +354,12 @@ while True:
                 cmd = json.loads(buffer[start:end+1])
                 try: append_log('IN: ' + json.dumps(cmd))
                 except: pass
+                # Send a short ACK showing which keys were parsed (helps host confirm receipt)
+                try:
+                    ack = json.dumps({"ack": list(cmd.keys())}) + "\n"
+                    write_serial_line(ack)
+                except:
+                    pass
                 for k in state:
                     if k in cmd: state[k] = cmd[k]
                 if "save" in cmd and cmd["save"]:

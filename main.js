@@ -136,22 +136,34 @@ isHTTP() { return this.resolveMode() === 'http'; },
     async requestState() {
         if (this.resolveMode() === 'serial') {
             if (isConnected) sendRaw({ get_state: true });
-        } else {
-            try {
-                const resp = await fetch('/state');
-                if (resp.ok) {
-                    const d = await resp.json();
-                    Object.assign(appState, d);
-                    ui.status.innerText = 'Synced (HTTP)';
-                    enableControls('http');
-                    drawControls();
-                } else {
-                    ui.status.innerText = 'No HTTP device';
+            return;
+        }
+        ui.status.innerText = 'Searching (HTTP)...';
+        for (const base of this.getBaseUrls()) {
+            let url = base ? `${base}/state` : '/state';
+            for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                    const resp = await fetchWithTimeout(url, {}, 1200);
+                    if (resp.ok) {
+                        const d = await resp.json();
+                        Object.assign(appState, d);
+                        showTempStatus(base ? `Synced (${base})` : 'Synced', 3000);
+                        if (base && base.startsWith('http://') && base !== window.location.origin) {
+                            const detected = base.replace('http://','');
+                            storedDeviceIP = detected.split('/')[0];
+                            localStorage.setItem('device_ip', storedDeviceIP);
+                            if (deviceIpInput) deviceIpInput.value = storedDeviceIP;
+                        }
+                        enableControls('http');
+                        drawControls();
+                        return;
+                    }
+                } catch (e) {
+                    if (attempt === 0) await new Promise(r => setTimeout(r, 220));
                 }
-            } catch (e) {
-                ui.status.innerText = 'HTTP error';
             }
         }
+        ui.status.innerText = 'No HTTP device';
     }
 };
 
