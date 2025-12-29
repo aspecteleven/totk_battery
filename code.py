@@ -1,4 +1,4 @@
-# VERSION = "v2.3"
+# VERSION = "v2.4"
 import board
 import neopixel
 import json
@@ -349,6 +349,21 @@ def update_leds():
 # --- MAIN LOOP ---
 buffer = ""
 
+def extract_json(buf):
+    depth = 0
+    start = None
+    for i, ch in enumerate(buf):
+        if ch == '{':
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == '}':
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and start is not None:
+                    return buf[start:i+1], buf[i+1:]
+    return None, buf
+
 while True:
     gc.collect()
     # Read from both CDC interfaces (data and console) for compatibility with different hosts
@@ -365,139 +380,138 @@ while True:
             pass
 
     # process any complete JSON objects found in buffer
-    while '}' in buffer:
-        end = buffer.find('}')
-        start = buffer.rfind('{', 0, end)
-        if start != -1:
+    while True:
+        json_str, buffer = extract_json(buffer)
+        if not json_str:
+            break
+        try:
+            cmd = json.loads(json_str)
+            try: append_log('IN: ' + json.dumps(cmd))
+            except: pass
+            wifi_cmd = cmd.get("wifi") or {}
+            wifi_seq = cmd.get("wifi_seq")
+            if wifi_seq is None and isinstance(wifi_cmd, dict) and "seq" in wifi_cmd:
+                wifi_seq = wifi_cmd.get("seq")
+            # Send a short ACK showing which keys were parsed (helps host confirm receipt)
             try:
-                cmd = json.loads(buffer[start:end+1])
-                try: append_log('IN: ' + json.dumps(cmd))
-                except: pass
-                wifi_cmd = cmd.get("wifi") or {}
-                wifi_seq = cmd.get("wifi_seq")
-                if wifi_seq is None and isinstance(wifi_cmd, dict) and "seq" in wifi_cmd:
-                    wifi_seq = wifi_cmd.get("seq")
-                # Send a short ACK showing which keys were parsed (helps host confirm receipt)
+                ack_payload = {"ack": list(cmd.keys())}
+                if wifi_seq is not None: ack_payload["wifi_seq"] = wifi_seq
+                if "diag" in cmd: ack_payload["diag"] = cmd.get("diag")
+                write_serial_line(json.dumps(ack_payload))
+            except:
+                pass
+            if "diag" in cmd:
                 try:
-                    ack_payload = {"ack": list(cmd.keys())}
-                    if wifi_seq is not None: ack_payload["wifi_seq"] = wifi_seq
-                    if "diag" in cmd: ack_payload["diag"] = cmd.get("diag")
-                    write_serial_line(json.dumps(ack_payload))
+                    diag_enabled = bool(cmd.get("diag"))
+                    append_log("DIAG: " + ("on" if diag_enabled else "off"))
+                    send_diag({"diag": "on" if diag_enabled else "off"})
                 except:
                     pass
-                if "diag" in cmd:
-                    try:
-                        diag_enabled = bool(cmd.get("diag"))
-                        append_log("DIAG: " + ("on" if diag_enabled else "off"))
-                        send_diag({"diag": "on" if diag_enabled else "off"})
-                    except:
-                        pass
-                for k in state:
-                    if k in cmd: state[k] = cmd[k]
-                if "save" in cmd and cmd["save"]:
-                    save_state()
-                    try:
-                        write_serial_line(json.dumps({"ok": True, "saved": True}) + "\n")
-                    except: pass
-                if "get_state" in cmd:
-                    try:
-                        write_serial_line(json.dumps(state) + "\n")
-                    except: pass
-                if "wifi" in cmd:
-                    ssid = wifi_cmd.get("ssid") if isinstance(wifi_cmd, dict) else None
-                    password = None
-                    if isinstance(wifi_cmd, dict):
-                        password = wifi_cmd.get("pass") or wifi_cmd.get("password")
-                        if "diag" in wifi_cmd:
-                            try:
-                                diag_enabled = bool(wifi_cmd.get("diag"))
-                                append_log("DIAG: " + ("on" if diag_enabled else "off"))
-                            except:
-                                pass
-                    if not ssid:
-                        try: write_serial_line(json.dumps({"ok": False, "error": "missing ssid", "wifi_seq": wifi_seq}) + "\n")
-                        except: pass
-                    elif not wifi_available:
-                        try: write_serial_line(json.dumps({"ok": False, "error": "wifi_unavailable", "wifi_seq": wifi_seq}) + "\n")
-                        except: pass
-                    else:
+            for k in state:
+                if k in cmd: state[k] = cmd[k]
+            if "save" in cmd and cmd["save"]:
+                save_state()
+                try:
+                    write_serial_line(json.dumps({"ok": True, "saved": True}) + "\n")
+                except: pass
+            if "get_state" in cmd:
+                try:
+                    write_serial_line(json.dumps(state) + "\n")
+                except: pass
+            if "wifi" in cmd:
+                ssid = wifi_cmd.get("ssid") if isinstance(wifi_cmd, dict) else None
+                password = None
+                if isinstance(wifi_cmd, dict):
+                    password = wifi_cmd.get("pass") or wifi_cmd.get("password")
+                    if "diag" in wifi_cmd:
                         try:
+                            diag_enabled = bool(wifi_cmd.get("diag"))
+                            append_log("DIAG: " + ("on" if diag_enabled else "off"))
+                        except:
+                            pass
+                if not ssid:
+                    try: write_serial_line(json.dumps({"ok": False, "error": "missing ssid", "wifi_seq": wifi_seq}) + "\n")
+                    except: pass
+                elif not wifi_available:
+                    try: write_serial_line(json.dumps({"ok": False, "error": "wifi_unavailable", "wifi_seq": wifi_seq}) + "\n")
+                    except: pass
+                else:
+                    try:
+                        if diag_enabled:
+                            try:
+                                start_payload = {"diag": "connect_start", "t": round(time.monotonic(), 3)}
+                                if wifi_seq is not None: start_payload["wifi_seq"] = wifi_seq
+                                send_diag(start_payload)
+                            except: pass
+                        # Acknowledge attempt immediately so host knows we're working
+                        try:
+                            # Send several quick pulses to increase the chance the host sees at least one
+                            pulse_count = 3 if not diag_enabled else 8
+                            pulse_delay = 0.05 if not diag_enabled else 0.2
+                            for i in range(pulse_count):
+                                payload = {"status": "connecting", "pulse": i+1}
+                                if wifi_seq is not None: payload["wifi_seq"] = wifi_seq
+                                if diag_enabled: payload["ts"] = round(time.monotonic(), 3)
+                                try: write_serial_line(json.dumps(payload))
+                                except: pass
+                                try: append_log(f'CONNECT-PULSE-{i+1}: {ssid}')
+                                except: pass
+                                try: time.sleep(pulse_delay)
+                                except: pass
+                        except: pass
+                        try: append_log('CONNECT-START: ' + ssid)
+                        except: pass
+                        # Give the host a little more time to receive the status before blocking on connect
+                        try: time.sleep(0.35)
+                        except: pass
+
+                        # Attempt connection (can block for several seconds)
+                        connect_start = time.monotonic()
+                        try:
+                            wifi.radio.connect(ssid, password)
+                            elapsed = round(time.monotonic() - connect_start, 3)
+                            try: append_log('CONNECT-SUCCESS')
+                            except: pass
+                            save_wifi_creds(ssid, password)
+                            start_http_server()
+                            ip = str(wifi.radio.ipv4_address)
+                            payload = {"status": "connected", "ok": True, "ip": ip, "done": True}
+                            if wifi_seq is not None: payload["wifi_seq"] = wifi_seq
+                            try: write_serial_line(json.dumps(payload))
+                            except: pass
+                            try: append_log('CONNECT-DONE: ' + ip)
+                            except: pass
                             if diag_enabled:
                                 try:
-                                    start_payload = {"diag": "connect_start", "t": round(time.monotonic(), 3)}
-                                    if wifi_seq is not None: start_payload["wifi_seq"] = wifi_seq
-                                    send_diag(start_payload)
+                                    end_payload = {"diag": "connect_end", "t": round(time.monotonic(), 3), "ok": True, "elapsed": elapsed}
+                                    if wifi_seq is not None: end_payload["wifi_seq"] = wifi_seq
+                                    send_diag(end_payload)
                                 except: pass
-                            # Acknowledge attempt immediately so host knows we're working
-                            try:
-                                # Send several quick pulses to increase the chance the host sees at least one
-                                pulse_count = 3 if not diag_enabled else 8
-                                pulse_delay = 0.05 if not diag_enabled else 0.2
-                                for i in range(pulse_count):
-                                    payload = {"status": "connecting", "pulse": i+1}
-                                    if wifi_seq is not None: payload["wifi_seq"] = wifi_seq
-                                    if diag_enabled: payload["ts"] = round(time.monotonic(), 3)
-                                    try: write_serial_line(json.dumps(payload))
-                                    except: pass
-                                    try: append_log(f'CONNECT-PULSE-{i+1}: {ssid}')
-                                    except: pass
-                                    try: time.sleep(pulse_delay)
-                                    except: pass
+                            # Allow a short pause so hosts can ingest this final status
+                            try: time.sleep(0.18)
                             except: pass
-                            try: append_log('CONNECT-START: ' + ssid)
-                            except: pass
-                            # Give the host a little more time to receive the status before blocking on connect
-                            try: time.sleep(0.35)
-                            except: pass
-
-                            # Attempt connection (can block for several seconds)
-                            connect_start = time.monotonic()
-                            try:
-                                wifi.radio.connect(ssid, password)
-                                elapsed = round(time.monotonic() - connect_start, 3)
-                                try: append_log('CONNECT-SUCCESS')
-                                except: pass
-                                save_wifi_creds(ssid, password)
-                                start_http_server()
-                                ip = str(wifi.radio.ipv4_address)
-                                payload = {"status": "connected", "ok": True, "ip": ip, "done": True}
-                                if wifi_seq is not None: payload["wifi_seq"] = wifi_seq
-                                try: write_serial_line(json.dumps(payload))
-                                except: pass
-                                try: append_log('CONNECT-DONE: ' + ip)
-                                except: pass
-                                if diag_enabled:
-                                    try:
-                                        end_payload = {"diag": "connect_end", "t": round(time.monotonic(), 3), "ok": True, "elapsed": elapsed}
-                                        if wifi_seq is not None: end_payload["wifi_seq"] = wifi_seq
-                                        send_diag(end_payload)
-                                    except: pass
-                                # Allow a short pause so hosts can ingest this final status
-                                try: time.sleep(0.18)
-                                except: pass
-                            except Exception as e:
-                                elapsed = round(time.monotonic() - connect_start, 3)
-                                try: append_log('CONNECT-ERR: ' + str(e))
-                                except: pass
-                                payload = {"status": "failed", "ok": False, "error": str(e), "done": True}
-                                if wifi_seq is not None: payload["wifi_seq"] = wifi_seq
-                                try: write_serial_line(json.dumps(payload))
-                                except: pass
-                                if diag_enabled:
-                                    try:
-                                        end_payload = {"diag": "connect_end", "t": round(time.monotonic(), 3), "ok": False, "elapsed": elapsed, "error": str(e)}
-                                        if wifi_seq is not None: end_payload["wifi_seq"] = wifi_seq
-                                        send_diag(end_payload)
-                                    except: pass
-                                try: time.sleep(0.18)
-                                except: pass
                         except Exception as e:
-                            err_payload = {"ok": False, "error": str(e), "done": True}
-                            if wifi_seq is not None: err_payload["wifi_seq"] = wifi_seq
-                            try: write_serial_line(json.dumps(err_payload) + "\n")
+                            elapsed = round(time.monotonic() - connect_start, 3)
+                            try: append_log('CONNECT-ERR: ' + str(e))
                             except: pass
-            except: pass
-        buffer = buffer[end+1:]
+                            payload = {"status": "failed", "ok": False, "error": str(e), "done": True}
+                            if wifi_seq is not None: payload["wifi_seq"] = wifi_seq
+                            try: write_serial_line(json.dumps(payload))
+                            except: pass
+                            if diag_enabled:
+                                try:
+                                    end_payload = {"diag": "connect_end", "t": round(time.monotonic(), 3), "ok": False, "elapsed": elapsed, "error": str(e)}
+                                    if wifi_seq is not None: end_payload["wifi_seq"] = wifi_seq
+                                    send_diag(end_payload)
+                                except: pass
+                            try: time.sleep(0.18)
+                            except: pass
+                    except Exception as e:
+                        err_payload = {"ok": False, "error": str(e), "done": True}
+                        if wifi_seq is not None: err_payload["wifi_seq"] = wifi_seq
+                        try: write_serial_line(json.dumps(err_payload) + "\n")
+                        except: pass
+        except: pass
 
     # Handle HTTP clients (non-blocking) if available
     if wifi_available and http_server:

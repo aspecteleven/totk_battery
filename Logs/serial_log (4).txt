@@ -1,0 +1,190 @@
+[21:39:38] INFO: Opened serial: {"usbProductId":33056,"usbVendorId":9114}
+[21:39:39] SENT: {"get_state":true}
+[21:39:39] RAW: ]0;🐍Wi-Fi: No IP | code.py | 10.0.3\{"ack": ["get_state"]}
+[21:39:39] RECV: ]0;🐍Wi-Fi: No IP | code.py | 10.0.3\{"ack": ["get_state"]}
+[21:39:39] RAW: {"ack": ["get_state"]}
+[21:39:39] RECV: {"ack": ["get_state"]}
+[21:39:39] RAW: {"fade_color_2": [255, 220, 0], "fade_min": 0.1, "fade_max": 0.9, "fade_color": [255, 200, 0], "snake_color_mode": "rainbow", "snake_color_1": [255, 0, 0], "snake_color_2": [0, 0, 255], "snake_cw": true, "solid_color": [23, 19, 251], "solid_bright": 0.7, "mode": "solid", "fade_use_2": true, "snake_speed": 1, "fade_speed": 0.9}
+[21:39:39] RECV: {"fade_color_2": [255, 220, 0], "fade_min": 0.1, "fade_max": 0.9, "fade_color": [255, 200, 0], "snake_color_mode": "rainbow", "snake_color_1": [255, 0, 0], "snake_color_2": [0, 0, 255], "snake_cw": true, "solid_color": [23, 19, 251], "solid_bright": 0.7, "mode": "solid", "fade_use_2": true, "snake_speed": 1, "fade_speed": 0.9}
+[21:39:39] RAW: {"fade_color_2": [255, 220, 0], "fade_min": 0.1, "fade_max": 0.9, "fade_color": [255, 200, 0], "snake_color_mode": "rainbow", "snake_color_1": [255, 0, 0], "snake_color_2": [0, 0, 255], "snake_cw": true, "solid_color": [23, 19, 251], "solid_bright": 0.7, "mode": "solid", "fade_use_2": true, "snake_speed": 1, "fade_speed": 0.9}
+[21:39:39] RECV: {"fade_color_2": [255, 220, 0], "fade_min": 0.1, "fade_max": 0.9, "fade_color": [255, 200, 0], "snake_color_mode": "rainbow", "snake_color_1": [255, 0, 0], "snake_color_2": [0, 0, 255], "snake_cw": true, "solid_color": [23, 19, 251], "solid_bright": 0.7, "mode": "solid", "fade_use_2": true, "snake_speed": 1, "fade_speed": 0.9}
+[21:39:42] SENT: {"mode":"solid","solid_color":[23,19,251],"solid_bright":0.2,"fade_color":[255,200,0],"fade_color_2":[255,220,0],"fade_use_2":true,"fade_min":0.1,"fade_max":0.9,"fade_speed":0.9,"snake_color_mode":"rainbow","snake_color_1":[255,0,0],"snake_color_2":[0,0,255],"snake_cw":true,"snake_speed":1,"save":false}
+[21:39:42] SENT: {"mode":"solid","solid_color":[23,19,251],"solid_bright":0.2,"fade_color":[255,200,0],"fade_color_2":[255,220,0],"fade_use_2":true,"fade_min":0.1,"fade_max":0.9,"fade_speed":0.9,"snake_color_mode":"rainbow","snake_color_1":[255,0,0],"snake_color_2":[0,0,255],"snake_cw":true,"snake_speed":1,"save":true}
+[21:39:42] RAW: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RECV: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RAW: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RECV: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RAW: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RECV: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RAW: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RECV: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RAW: Saved
+[21:39:42] RECV: Saved
+[21:39:42] RAW: {"saved": true, "ok": true}
+[21:39:42] RECV: {"saved": true, "ok": true}
+[21:39:42] RAW: {"saved": true, "ok": true}
+[21:39:42] RECV: {"saved": true, "ok": true}
+[21:39:42] SENT: {"mode":"solid","solid_color":[23,19,251],"solid_bright":0.65,"fade_color":[255,200,0],"fade_color_2":[255,220,0],"fade_use_2":true,"fade_min":0.1,"fade_max":0.9,"fade_speed":0.9,"snake_color_mode":"rainbow","snake_color_1":[255,0,0],"snake_color_2":[0,0,255],"snake_cw":true,"snake_speed":1,"save":false}
+[21:39:42] SENT: {"mode":"solid","solid_color":[23,19,251],"solid_bright":0.65,"fade_color":[255,200,0],"fade_color_2":[255,220,0],"fade_use_2":true,"fade_min":0.1,"fade_max":0.9,"fade_speed":0.9,"snake_color_mode":"rainbow","snake_color_1":[255,0,0],"snake_color_2":[0,0,255],"snake_cw":true,"snake_speed":1,"save":true}
+[21:39:42] RAW: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RECV: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RAW: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RECV: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RAW: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RECV: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RAW: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RECV: {"ack": ["snake_color_1", "snake_color_2", "snake_cw", "solid_bright", "mode", "fade_color_2", "snake_speed", "snake_color_mode", "fade_color", "save", "fade_min", "fade_speed", "solid_color", "fade_max", "fade_use_2"]}
+[21:39:42] RAW: Saved
+[21:39:42] RECV: Saved
+[21:39:42] RAW: {"saved": true, "ok": true}
+[21:39:42] RECV: {"saved": true, "ok": true}
+[21:39:42] RAW: {"saved": true, "ok": true}
+[21:39:42] RECV: {"saved": true, "ok": true}
+[21:39:55] SENT: {"diag":true}
+[21:39:55] RAW: {"ack": ["diag"], "diag": true}
+[21:39:55] RECV: {"ack": ["diag"], "diag": true}
+[21:39:55] RAW: {"ack": ["diag"], "diag": true}
+[21:39:55] RECV: {"ack": ["diag"], "diag": true}
+[21:39:55] RAW: {"diag": "on"}
+[21:39:55] RECV: {"diag": "on"}
+[21:39:55] RAW: {"diag": "on"}
+[21:39:55] RECV: {"diag": "on"}
+[21:39:55] RAW: {"diag": "hb", "t": 514.72}
+[21:39:55] RECV: {"diag": "hb", "t": 514.72}
+[21:39:55] RAW: {"diag": "hb", "t": 514.72}
+[21:39:55] RECV: {"diag": "hb", "t": 514.72}
+[21:39:55] RAW: {"diag": "hb", "t": 515.22}
+[21:39:55] RECV: {"diag": "hb", "t": 515.22}
+[21:39:55] RAW: {"diag": "hb", "t": 515.22}
+[21:39:55] RECV: {"diag": "hb", "t": 515.22}
+[21:39:56] RAW: {"diag": "hb", "t": 515.73}
+[21:39:56] RECV: {"diag": "hb", "t": 515.73}
+[21:39:56] RAW: {"diag": "hb", "t": 515.73}
+[21:39:56] RECV: {"diag": "hb", "t": 515.73}
+[21:39:56] RAW: {"diag": "hb", "t": 516.23}
+[21:39:56] RECV: {"diag": "hb", "t": 516.23}
+[21:39:56] RAW: {"diag": "hb", "t": 516.23}
+[21:39:56] RECV: {"diag": "hb", "t": 516.23}
+[21:39:57] RAW: {"diag": "hb", "t": 516.73}
+[21:39:57] RECV: {"diag": "hb", "t": 516.73}
+[21:39:57] RAW: {"diag": "hb", "t": 516.73}
+[21:39:57] RECV: {"diag": "hb", "t": 516.73}
+[21:39:57] RAW: {"diag": "hb", "t": 517.23}
+[21:39:57] RECV: {"diag": "hb", "t": 517.23}
+[21:39:57] RAW: {"diag": "hb", "t": 517.23}
+[21:39:57] RECV: {"diag": "hb", "t": 517.23}
+[21:39:58] RAW: {"diag": "hb", "t": 517.73}
+[21:39:58] RECV: {"diag": "hb", "t": 517.73}
+[21:39:58] RAW: {"diag": "hb", "t": 517.73}
+[21:39:58] RECV: {"diag": "hb", "t": 517.73}
+[21:39:58] SENT: {"wifi":{"ssid":"<redacted>","pass":"<redacted>"},"wifi_seq":1,"diag":true}
+[21:39:58] RAW: {"ack": ["ssid", "pass"]}
+[21:39:58] RECV: {"ack": ["ssid", "pass"]}
+[21:39:58] RAW: {"ack": ["ssid", "pass"]}
+[21:39:58] RECV: {"ack": ["ssid", "pass"]}
+[21:39:58] RAW: {"diag": "hb", "t": 518.24}
+[21:39:58] RECV: {"diag": "hb", "t": 518.24}
+[21:39:58] RAW: {"diag": "hb", "t": 518.24}
+[21:39:58] RECV: {"diag": "hb", "t": 518.24}
+[21:39:59] RAW: {"diag": "hb", "t": 518.75}
+[21:39:59] RECV: {"diag": "hb", "t": 518.75}
+[21:39:59] RAW: {"diag": "hb", "t": 518.75}
+[21:39:59] RECV: {"diag": "hb", "t": 518.75}
+[21:39:59] RAW: {"diag": "hb", "t": 519.26}
+[21:39:59] RECV: {"diag": "hb", "t": 519.26}
+[21:39:59] RAW: {"diag": "hb", "t": 519.26}
+[21:39:59] RECV: {"diag": "hb", "t": 519.26}
+[21:40:00] RAW: {"diag": "hb", "t": 519.76}
+[21:40:00] RECV: {"diag": "hb", "t": 519.76}
+[21:40:00] RAW: {"diag": "hb", "t": 519.76}
+[21:40:00] RECV: {"diag": "hb", "t": 519.76}
+[21:40:00] RAW: {"diag": "hb", "t": 520.27}
+[21:40:00] RECV: {"diag": "hb", "t": 520.27}
+[21:40:00] RAW: {"diag": "hb", "t": 520.27}
+[21:40:00] RECV: {"diag": "hb", "t": 520.27}
+[21:40:01] RAW: {"diag": "hb", "t": 520.78}
+[21:40:01] RECV: {"diag": "hb", "t": 520.78}
+[21:40:01] RAW: {"diag": "hb", "t": 520.78}
+[21:40:01] RECV: {"diag": "hb", "t": 520.78}
+[21:40:01] RAW: {"diag": "hb", "t": 521.29}
+[21:40:01] RECV: {"diag": "hb", "t": 521.29}
+[21:40:01] RAW: {"diag": "hb", "t": 521.29}
+[21:40:01] RECV: {"diag": "hb", "t": 521.29}
+[21:40:02] RAW: {"diag": "hb", "t": 521.8}
+[21:40:02] RECV: {"diag": "hb", "t": 521.8}
+[21:40:02] RAW: {"diag": "hb", "t": 521.8}
+[21:40:02] RECV: {"diag": "hb", "t": 521.8}
+[21:40:02] RAW: {"diag": "hb", "t": 522.31}
+[21:40:02] RECV: {"diag": "hb", "t": 522.31}
+[21:40:02] RAW: {"diag": "hb", "t": 522.31}
+[21:40:02] RECV: {"diag": "hb", "t": 522.31}
+[21:40:03] RAW: {"diag": "hb", "t": 522.82}
+[21:40:03] RECV: {"diag": "hb", "t": 522.82}
+[21:40:03] RAW: {"diag": "hb", "t": 522.82}
+[21:40:03] RECV: {"diag": "hb", "t": 522.82}
+[21:40:03] RAW: {"diag": "hb", "t": 523.32}
+[21:40:03] RECV: {"diag": "hb", "t": 523.32}
+[21:40:03] RAW: {"diag": "hb", "t": 523.32}
+[21:40:03] RECV: {"diag": "hb", "t": 523.32}
+[21:40:04] RAW: {"diag": "hb", "t": 523.83}
+[21:40:04] RECV: {"diag": "hb", "t": 523.83}
+[21:40:04] RAW: {"diag": "hb", "t": 523.83}
+[21:40:04] RECV: {"diag": "hb", "t": 523.83}
+[21:40:04] INFO: HTTP fallback attempt 1/4
+[21:40:04] RAW: {"diag": "hb", "t": 524.33}
+[21:40:04] RECV: {"diag": "hb", "t": 524.33}
+[21:40:04] RAW: {"diag": "hb", "t": 524.33}
+[21:40:04] RECV: {"diag": "hb", "t": 524.33}
+[21:40:05] RAW: {"diag": "hb", "t": 524.83}
+[21:40:05] RECV: {"diag": "hb", "t": 524.83}
+[21:40:05] RAW: {"diag": "hb", "t": 524.83}
+[21:40:05] RECV: {"diag": "hb", "t": 524.83}
+[21:40:05] RAW: {"diag": "hb", "t": 525.33}
+[21:40:05] RECV: {"diag": "hb", "t": 525.33}
+[21:40:05] RAW: {"diag": "hb", "t": 525.33}
+[21:40:05] RECV: {"diag": "hb", "t": 525.33}
+[21:40:06] RAW: {"diag": "hb", "t": 525.83}
+[21:40:06] RECV: {"diag": "hb", "t": 525.83}
+[21:40:06] RAW: {"diag": "hb", "t": 525.83}
+[21:40:06] RECV: {"diag": "hb", "t": 525.83}
+[21:40:06] RAW: {"diag": "hb", "t": 526.34}
+[21:40:06] RECV: {"diag": "hb", "t": 526.34}
+[21:40:06] RAW: {"diag": "hb", "t": 526.34}
+[21:40:06] RECV: {"diag": "hb", "t": 526.34}
+[21:40:07] RAW: {"diag": "hb", "t": 526.84}
+[21:40:07] RECV: {"diag": "hb", "t": 526.84}
+[21:40:07] RAW: {"diag": "hb", "t": 526.84}
+[21:40:07] RECV: {"diag": "hb", "t": 526.84}
+[21:40:07] INFO: HTTP fallback attempt 2/4
+[21:40:07] RAW: {"diag": "hb", "t": 527.34}
+[21:40:07] RECV: {"diag": "hb", "t": 527.34}
+[21:40:07] RAW: {"diag": "hb", "t": 527.34}
+[21:40:07] RECV: {"diag": "hb", "t": 527.34}
+[21:40:08] RAW: {"diag": "hb", "t": 527.84}
+[21:40:08] RECV: {"diag": "hb", "t": 527.84}
+[21:40:08] RAW: {"diag": "hb", "t": 527.84}
+[21:40:08] RECV: {"diag": "hb", "t": 527.84}
+[21:40:08] RAW: {"diag": "hb", "t": 528.34}
+[21:40:08] RECV: {"diag": "hb", "t": 528.34}
+[21:40:08] RAW: {"diag": "hb", "t": 528.34}
+[21:40:08] RECV: {"diag": "hb", "t": 528.34}
+[21:40:09] RAW: {"diag": "hb", "t": 528.85}
+[21:40:09] RECV: {"diag": "hb", "t": 528.85}
+[21:40:09] RAW: {"diag": "hb", "t": 528.85}
+[21:40:09] RECV: {"diag": "hb", "t": 528.85}
+[21:40:09] RAW: {"diag": "hb", "t": 529.35}
+[21:40:09] RECV: {"diag": "hb", "t": 529.35}
+[21:40:09] RAW: {"diag": "hb", "t": 529.35}
+[21:40:09] RECV: {"diag": "hb", "t": 529.35}
+[21:40:09] SENT: {"diag":false}
+[21:40:09] RAW: {"ack": ["diag"], "diag": false}
+[21:40:09] RECV: {"ack": ["diag"], "diag": false}
+[21:40:09] RAW: {"ack": ["diag"], "diag": false}
+[21:40:09] RECV: {"ack": ["diag"], "diag": false}
+[21:40:09] RAW: {"diag": "off"}
+[21:40:09] RECV: {"diag": "off"}
+[21:40:09] RAW: {"diag": "off"}
+[21:40:09] RECV: {"diag": "off"}
+[21:40:10] INFO: HTTP fallback attempt 3/4
+[21:40:13] INFO: HTTP fallback attempt 4/4
+[21:40:18] INFO: WiFi serial timeout

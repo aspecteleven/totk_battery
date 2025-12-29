@@ -1,7 +1,7 @@
 // --- INTRO LOGIC ---
 // FILE VERSIONS - update these when editing files
 const HTML_VERSION = 'v2.15';
-const JS_VERSION = 'v2.17';
+const JS_VERSION = 'v2.18';
 const CSS_VERSION = 'v2.3';
 
 const intro = {
@@ -765,7 +765,7 @@ function getHttpBasesSafe() {
     if (storedDeviceIP && pageIsHttp) bases.push(`http://${storedDeviceIP}`);
     if (pageIsHttp) bases.push('http://zonai.local'); // try mDNS name
     if (pageIsHttp && origin && origin !== 'null') bases.push(origin);
-    bases.push(''); // relative
+    if (pageIsHttp) bases.push(''); // relative
     return bases;
 }
 
