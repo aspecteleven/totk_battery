@@ -139,7 +139,10 @@ isHTTP() { return this.resolveMode() === 'http'; },
             return;
         }
         ui.status.innerText = 'Searching (HTTP)...';
-        for (const base of this.getBaseUrls()) {
+        let bases = [];
+        try { if (this.getBaseUrls && typeof this.getBaseUrls === 'function') bases = this.getBaseUrls(); } catch(e) {}
+        if (!bases || typeof bases[Symbol.iterator] !== 'function') { bases = []; if (storedDeviceIP) bases.push(`http://${storedDeviceIP}`); bases.push('http://zonai.local'); try { const origin = window.location.origin || ''; if (origin.startsWith('http://') || origin.includes('localhost') || origin.includes('127.0.0.1')) bases.push(origin); } catch(e) {} bases.push(''); }
+        for (const base of bases) {
             let url = base ? `${base}/state` : '/state';
             for (let attempt = 0; attempt < 2; attempt++) {
                 try {
@@ -343,6 +346,14 @@ function parseJSON(text) {
                     const ws = document.getElementById('wifiStatus');
                     if (ws) ws.innerText = d.status;
                     appendSerialLog('INFO', 'status: ' + d.status);
+                }
+                if ('ack' in d) {
+                    const ws = document.getElementById('wifiStatus');
+                    if (ws) ws.innerText = 'Acknowledged';
+                    appendSerialLog('INFO', 'ack: ' + JSON.stringify(d.ack));
+                    // extend pending wait time to allow connect to complete
+                    if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
+                    pendingSerialWifi = { timeout: setTimeout(() => { ui.wifiStatus.innerText = 'No response (serial)'; pendingSerialWifi = null; }, 60000) };
                 }
                 if ('ok' in d) {
                     const ws = document.getElementById('wifiStatus');
