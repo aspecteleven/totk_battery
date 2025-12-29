@@ -103,6 +103,16 @@
                             <button id="wifiSubmit" style="padding:8px;border-radius:4px;">Connect</button>
                         </div>
                         <div id="wifiStatus" style="font-size:12px;color:#aaa;margin-top:6px;"></div>
+                        <hr style="border:none;border-top:1px solid #222;margin:8px 0;" />
+                        <div style="font-size:12px;color:#aaa;">Serial Log</div>
+                        <div style="display:flex;gap:8px;margin-top:6px;">
+                            <pre id="serialLog" class="serial-log" style="flex:1;min-height:120px;overflow:auto;margin:0;padding:8px;border-radius:4px;border:1px solid #222;background:#061017;color:#ccc;font-family:monospace;font-size:12px;"></pre>
+                        </div>
+                        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+                            <button id="clearLog" style="padding:8px;border-radius:4px;">Clear</button>
+                            <button id="fetchLogs" style="padding:8px;border-radius:4px;">Fetch Device Logs</button>
+                            <button id="downloadLog" style="padding:8px;border-radius:4px;">Download</button>
+                        </div>
                     </div>
                 </div>
             </div>

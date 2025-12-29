@@ -289,11 +289,26 @@ function handleSerialData(text) {
     serialBuffer += text;
     let lines = serialBuffer.split("\n");
     serialBuffer = lines.pop(); 
-    for (let line of lines) { if (line.trim().length > 0) parseJSON(line); }
+    for (let line of lines) { if (line.trim().length > 0) { appendSerialLog('RAW', line); parseJSON(line); } }
+}
+
+function appendSerialLog(dir, text) {
+    try {
+        const el = document.getElementById('serialLog');
+        const ts = new Date().toISOString().substr(11,8);
+        const line = `[${ts}] ${dir}: ${text}`;
+        if (el) {
+            el.textContent = (el.textContent ? el.textContent + '\n' : '') + line;
+            if (el.textContent.length > 20000) el.textContent = el.textContent.slice(-20000);
+            el.scrollTop = el.scrollHeight;
+        }
+        console.debug(line);
+    } catch(e){}
 }
 
 function parseJSON(text) {
     try {
+        appendSerialLog('RECV', text);
         if (text.indexOf('{') > -1) {
             let jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}')+1);
             let d = JSON.parse(jsonStr);
@@ -337,7 +352,11 @@ function parseJSON(text) {
 
 async function sendRaw(payload) {
     if (!writer) return;
-    try { await writer.write(JSON.stringify(payload)); } catch(e){}
+    try {
+        const s = JSON.stringify(payload);
+        await writer.write(s);
+        appendSerialLog('SENT', s);
+    } catch(e){ appendSerialLog('ERR', 'sendRaw failed: ' + e); }
 }
 
 async function sendData(save) {
@@ -669,6 +688,10 @@ function showSettingsModal() {
     const ws = document.getElementById('wifiStatus'); if(ws) ws.innerText='';
     const assetEl = document.getElementById('assetBase'); if (assetEl) assetEl.value = ASSET_BASE || document.getElementById('githubUrl')?.value || '';
     const deviceIpEl = document.getElementById('deviceIp'); if (deviceIpEl) deviceIpEl.value = storedDeviceIP || '';
+    // Hook up log buttons
+    const clearBtn = document.getElementById('clearLog'); if (clearBtn) clearBtn.addEventListener('click', () => { const el = document.getElementById('serialLog'); if (el) el.textContent = ''; });
+    const downloadBtn = document.getElementById('downloadLog'); if (downloadBtn) downloadBtn.addEventListener('click', () => { const el = document.getElementById('serialLog'); if (!el) return; const blob = new Blob([el.textContent], {type:'text/plain'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'serial_log.txt'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
+    const fetchBtn = document.getElementById('fetchLogs'); if (fetchBtn) fetchBtn.addEventListener('click', async () => { if (storedDeviceIP) { try { const resp = await fetchWithTimeout(`http://${storedDeviceIP}/logs`, {}, 1500); if (resp.ok) { const j = await resp.json(); if (j.logs) { const el = document.getElementById('serialLog'); if (el) el.textContent = j.logs.join('\n'); } } } catch(e){ appendSerialLog('ERR', 'fetchLogs failed: '+e); } } else appendSerialLog('INFO', 'No device IP stored'); });
 }
 function hideSettingsModal() { const ov = document.getElementById('settingsOverlay'); if(ov) ov.classList.add('hidden'); }
 

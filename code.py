@@ -100,6 +100,18 @@ def start_http_server():
         http_server = None
 
 
+# --- LOG BUFFER ---
+LOG_BUFFER = []
+LOG_MAX = 200
+
+def append_log(s):
+    try:
+        LOG_BUFFER.append(f"{int(time.time())}:{s}")
+        if len(LOG_BUFFER) > LOG_MAX: LOG_BUFFER.pop(0)
+    except Exception:
+        pass
+
+
 def send_http(client, status_code, content_type, body):
     try:
         status_text = 'OK' if status_code == 200 else 'ERROR'
@@ -178,6 +190,11 @@ def handle_http_client(client):
                 send_http(client, 400, 'application/json', json.dumps({'ok': False}))
         elif method == 'GET' and path == '/health':
             send_http(client, 200, 'application/json', json.dumps({'ok': True}))
+        elif method == 'GET' and path == '/logs':
+            try:
+                send_http(client, 200, 'application/json', json.dumps({'logs': LOG_BUFFER}))
+            except:
+                send_http(client, 500, 'application/json', json.dumps({'ok': False}))
         else:
             send_http(client, 404, 'text/plain', 'Not Found')
     except Exception as e:
@@ -206,6 +223,22 @@ if wifi_available:
                 pass
         except Exception as e:
             print("WiFi connect failed:", e)
+
+# --- SERIAL HELPERS ---
+# Write a line to both CDC interfaces (data and console) so host receives responses
+def write_serial_line(s):
+    try:
+        append_log('OUT: ' + s.strip())
+    except:
+        pass
+    try:
+        usb_cdc.data.write(s.encode('utf-8'))
+    except Exception:
+        pass
+    try:
+        usb_cdc.console.write(s.encode('utf-8'))
+    except Exception:
+        pass
 
 # --- HELPERS ---
 def correct(rgb, br=1.0):
@@ -295,58 +328,64 @@ def update_leds():
     pixels.show()
 
 # --- MAIN LOOP ---
-serial = usb_cdc.data
 buffer = ""
 
 while True:
     gc.collect()
-    if serial.in_waiting > 0:
+    # Read from both CDC interfaces (data and console) for compatibility with different hosts
+    for stream in (getattr(usb_cdc, 'data', None), getattr(usb_cdc, 'console', None)):
         try:
-            chunk = serial.read(serial.in_waiting).decode("utf-8")
-            buffer += chunk
-            if len(buffer) > 1000: buffer = ""
-        except: buffer = ""
+            if stream and stream.in_waiting > 0:
+                chunk = stream.read(stream.in_waiting).decode("utf-8")
+                buffer += chunk
+                if len(buffer) > 2000:
+                    buffer = ""
+        except Exception:
+            pass
 
-        while '}' in buffer:
-            end = buffer.find('}')
-            start = buffer.rfind('{', 0, end)
-            if start != -1:
-                try:
-                    cmd = json.loads(buffer[start:end+1])
-                    for k in state:
-                        if k in cmd: state[k] = cmd[k]
-                    if "save" in cmd and cmd["save"]:
-                        save_state()
-                        try:
-                            serial.write((json.dumps({"ok": True, "saved": True}) + "\n").encode())
-                        except: pass
-                    if "get_state" in cmd:
-                        try:
-                            serial.write((json.dumps(state) + "\n").encode())
-                        except: pass
-                    if "wifi" in cmd:
-                        wifi_cmd = cmd.get("wifi") or {}
-                        ssid = wifi_cmd.get("ssid")
-                        password = wifi_cmd.get("pass") or wifi_cmd.get("password")
-                        if not ssid:
-                            try: serial.write((json.dumps({"ok": False, "error": "missing ssid"}) + "\n").encode())
-                            except: pass
-                        elif not wifi_available:
-                            try: serial.write((json.dumps({"ok": False, "error": "wifi_unavailable"}) + "\n").encode())
-                            except: pass
-                        else:
-                            try:
-                                wifi.radio.connect(ssid, password)
-                                save_wifi_creds(ssid, password)
-                                start_http_server()
-                                ip = str(wifi.radio.ipv4_address)
-                                try: serial.write((json.dumps({"ok": True, "ip": ip}) + "\n").encode())
-                                except: pass
-                            except Exception as e:
-                                try: serial.write((json.dumps({"ok": False, "error": str(e)}) + "\n").encode())
-                                except: pass
+    # process any complete JSON objects found in buffer
+    while '}' in buffer:
+        end = buffer.find('}')
+        start = buffer.rfind('{', 0, end)
+        if start != -1:
+            try:
+                cmd = json.loads(buffer[start:end+1])
+                try: append_log('IN: ' + json.dumps(cmd))
                 except: pass
-            buffer = buffer[end+1:]
+                for k in state:
+                    if k in cmd: state[k] = cmd[k]
+                if "save" in cmd and cmd["save"]:
+                    save_state()
+                    try:
+                        write_serial_line(json.dumps({"ok": True, "saved": True}) + "\n")
+                    except: pass
+                if "get_state" in cmd:
+                    try:
+                        write_serial_line(json.dumps(state) + "\n")
+                    except: pass
+                if "wifi" in cmd:
+                    wifi_cmd = cmd.get("wifi") or {}
+                    ssid = wifi_cmd.get("ssid")
+                    password = wifi_cmd.get("pass") or wifi_cmd.get("password")
+                    if not ssid:
+                        try: write_serial_line(json.dumps({"ok": False, "error": "missing ssid"}) + "\n")
+                        except: pass
+                    elif not wifi_available:
+                        try: write_serial_line(json.dumps({"ok": False, "error": "wifi_unavailable"}) + "\n")
+                        except: pass
+                    else:
+                        try:
+                            wifi.radio.connect(ssid, password)
+                            save_wifi_creds(ssid, password)
+                            start_http_server()
+                            ip = str(wifi.radio.ipv4_address)
+                            try: write_serial_line(json.dumps({"ok": True, "ip": ip}) + "\n")
+                            except: pass
+                        except Exception as e:
+                            try: write_serial_line(json.dumps({"ok": False, "error": str(e)}) + "\n")
+                            except: pass
+            except: pass
+        buffer = buffer[end+1:]
 
     # Handle HTTP clients (non-blocking) if available
     if wifi_available and http_server:
