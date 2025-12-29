@@ -1,4 +1,9 @@
 // --- INTRO LOGIC ---
+// FILE VERSIONS - update these when editing files
+const HTML_VERSION = 'v2.14';
+const JS_VERSION = 'v2.14';
+const CSS_VERSION = 'v2.3';
+
 const intro = {
     screen: document.getElementById('introScreen'),
     prompt: document.getElementById('introPrompt'),
@@ -762,6 +767,13 @@ const wifiSubmit = document.getElementById('wifiSubmit'); if (wifiSubmit) wifiSu
     document.getElementById('wifiStatus').innerText = 'Attempting...';
     await submitWifi(ssid, pass);
 });
+
+// Update versions display (if present in DOM)
+try {
+    const verEl = document.getElementById('versions');
+    if (verEl) verEl.innerText = `HTML ${HTML_VERSION} · JS ${JS_VERSION} · CSS ${CSS_VERSION}`;
+} catch (e) {}
+
 
 if (pingBtn) pingBtn.addEventListener('click', async () => {
     const ipVal = (deviceIpInput && deviceIpInput.value.trim()) || storedDeviceIP;

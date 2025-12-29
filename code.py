@@ -228,6 +228,9 @@ if wifi_available:
 # Write a line to both CDC interfaces (data and console) so host receives responses
 def write_serial_line(s):
     try:
+        # Ensure trailing newline for consistent host parsing
+        if not s.endswith('\n'):
+            s = s + '\n'
         append_log('OUT: ' + s.strip())
     except:
         pass
@@ -238,6 +241,11 @@ def write_serial_line(s):
     try:
         usb_cdc.console.write(s.encode('utf-8'))
     except Exception:
+        pass
+    try:
+        # Also print to REPL / console for debugging tools that read the console
+        print(s.strip())
+    except:
         pass
 
 # --- HELPERS ---
@@ -388,8 +396,8 @@ while True:
                             except: pass
                             try: append_log('CONNECT-START: ' + ssid)
                             except: pass
-                            # Give the host a moment to receive the status before blocking on connect
-                            try: time.sleep(0.05)
+                            # Give the host more time to receive the status before blocking on connect
+                            try: time.sleep(0.25)
                             except: pass
 
                             # Attempt connection (can block for several seconds)
@@ -404,10 +412,15 @@ while True:
                                 except: pass
                                 try: append_log('CONNECT-DONE: ' + ip)
                                 except: pass
+                                # Allow a short pause so hosts can ingest this final status
+                                try: time.sleep(0.12)
+                                except: pass
                             except Exception as e:
                                 try: append_log('CONNECT-ERR: ' + str(e))
                                 except: pass
                                 try: write_serial_line(json.dumps({"status": "failed", "ok": False, "error": str(e)}) + "\n")
+                                except: pass
+                                try: time.sleep(0.12)
                                 except: pass
                         except Exception as e:
                             try: write_serial_line(json.dumps({"ok": False, "error": str(e)}) + "\n")
