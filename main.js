@@ -1,7 +1,7 @@
 // --- INTRO LOGIC ---
 // FILE VERSIONS - update these when editing files
 const HTML_VERSION = 'v2.14';
-const JS_VERSION = 'v2.14';
+const JS_VERSION = 'v2.15';
 const CSS_VERSION = 'v2.3';
 
 const intro = {
