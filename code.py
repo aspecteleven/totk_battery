@@ -1,4 +1,4 @@
-# VERSION = "v2.0"
+# VERSION = "v2.1"
 import board
 import neopixel
 import json
@@ -333,10 +333,12 @@ buffer = ""
 while True:
     gc.collect()
     # Read from both CDC interfaces (data and console) for compatibility with different hosts
-    for stream in (getattr(usb_cdc, 'data', None), getattr(usb_cdc, 'console', None)):
+    for name, stream in (('data', getattr(usb_cdc, 'data', None)), ('console', getattr(usb_cdc, 'console', None))):
         try:
             if stream and stream.in_waiting > 0:
                 chunk = stream.read(stream.in_waiting).decode("utf-8")
+                try: append_log(f"READ-{name}: " + chunk.replace('\n','\\n')[:200])
+                except: pass
                 buffer += chunk
                 if len(buffer) > 2000:
                     buffer = ""
@@ -375,6 +377,11 @@ while True:
                         except: pass
                     else:
                         try:
+                            # Acknowledge attempt immediately so host knows we're working
+                            try: write_serial_line(json.dumps({"status": "connecting"}) + "\n")
+                            except: pass
+                            try: append_log('CONNECT: ' + ssid)
+                            except: pass
                             wifi.radio.connect(ssid, password)
                             save_wifi_creds(ssid, password)
                             start_http_server()

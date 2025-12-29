@@ -316,6 +316,11 @@ function parseJSON(text) {
             // Handle control responses (non-state messages)
             if (d && typeof d === 'object') {
                 // WiFi serial response handling
+                if ('status' in d) {
+                    const ws = document.getElementById('wifiStatus');
+                    if (ws) ws.innerText = d.status;
+                    appendSerialLog('INFO', 'status: ' + d.status);
+                }
                 if ('ok' in d) {
                     const ws = document.getElementById('wifiStatus');
                     if (d.ok) {
@@ -657,7 +662,7 @@ async function submitWifi(ssid, pass) {
             sendRaw({ wifi: { ssid: ssid, pass: pass } });
             ui.wifiStatus.innerText = 'Sent via serial — waiting for device...';
             if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
-            pendingSerialWifi = { timeout: setTimeout(() => { ui.wifiStatus.innerText = 'No response (serial)'; pendingSerialWifi = null; }, 8000) };
+            pendingSerialWifi = { timeout: setTimeout(() => { ui.wifiStatus.innerText = 'No response (serial)'; pendingSerialWifi = null; }, 20000) };
         } catch (e) { ui.wifiStatus.innerText = 'Serial send failed'; }
         return;
     }
