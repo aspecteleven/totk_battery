@@ -386,14 +386,29 @@ while True:
                             # Acknowledge attempt immediately so host knows we're working
                             try: write_serial_line(json.dumps({"status": "connecting"}) + "\n")
                             except: pass
-                            try: append_log('CONNECT: ' + ssid)
+                            try: append_log('CONNECT-START: ' + ssid)
                             except: pass
-                            wifi.radio.connect(ssid, password)
-                            save_wifi_creds(ssid, password)
-                            start_http_server()
-                            ip = str(wifi.radio.ipv4_address)
-                            try: write_serial_line(json.dumps({"ok": True, "ip": ip}) + "\n")
+                            # Give the host a moment to receive the status before blocking on connect
+                            try: time.sleep(0.05)
                             except: pass
+
+                            # Attempt connection (can block for several seconds)
+                            try:
+                                wifi.radio.connect(ssid, password)
+                                try: append_log('CONNECT-SUCCESS')
+                                except: pass
+                                save_wifi_creds(ssid, password)
+                                start_http_server()
+                                ip = str(wifi.radio.ipv4_address)
+                                try: write_serial_line(json.dumps({"status": "connected", "ok": True, "ip": ip}) + "\n")
+                                except: pass
+                                try: append_log('CONNECT-DONE: ' + ip)
+                                except: pass
+                            except Exception as e:
+                                try: append_log('CONNECT-ERR: ' + str(e))
+                                except: pass
+                                try: write_serial_line(json.dumps({"status": "failed", "ok": False, "error": str(e)}) + "\n")
+                                except: pass
                         except Exception as e:
                             try: write_serial_line(json.dumps({"ok": False, "error": str(e)}) + "\n")
                             except: pass

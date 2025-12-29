@@ -141,7 +141,18 @@ isHTTP() { return this.resolveMode() === 'http'; },
         ui.status.innerText = 'Searching (HTTP)...';
         let bases = [];
         try { if (this.getBaseUrls && typeof this.getBaseUrls === 'function') bases = this.getBaseUrls(); } catch(e) {}
-        if (!bases || typeof bases[Symbol.iterator] !== 'function') { bases = []; if (storedDeviceIP) bases.push(`http://${storedDeviceIP}`); bases.push('http://zonai.local'); try { const origin = window.location.origin || ''; if (origin.startsWith('http://') || origin.includes('localhost') || origin.includes('127.0.0.1')) bases.push(origin); } catch(e) {} bases.push(''); }
+        if (!bases || typeof bases[Symbol.iterator] !== 'function') {
+            bases = [];
+            // Only attempt direct HTTP device addresses when the page itself is served over HTTP/local file/localhost
+            // to avoid Mixed Content errors when the page is HTTPS (e.g., GitHub Pages).
+            let origin = '';
+            try { origin = window.location.origin || ''; } catch(e) { origin = ''; }
+            const pageIsHttp = origin.startsWith('http://') || origin.startsWith('file://') || origin.includes('localhost') || origin.includes('127.0.0.1');
+            if (storedDeviceIP && pageIsHttp) bases.push(`http://${storedDeviceIP}`);
+            if (pageIsHttp) bases.push('http://zonai.local'); // try mDNS name only on non-HTTPS pages
+            if (pageIsHttp) bases.push(origin);
+            bases.push('');
+        }
         for (const base of bases) {
             let url = base ? `${base}/state` : '/state';
             for (let attempt = 0; attempt < 2; attempt++) {
