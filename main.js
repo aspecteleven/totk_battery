@@ -225,7 +225,15 @@ ui.connToggle.addEventListener('click', async () => {
             ui.offlineBtn.classList.remove('active');
 
             port = await navigator.serial.requestPort();
-            await port.open({ baudRate: 115200 });
+            try {
+                await port.open({ baudRate: 115200 });
+            } catch (e) {
+                console.error('Serial open failed', e);
+                // Common case: port already opened by another app
+                ui.status.innerText = 'Port already open (close other app)';
+                appendSerialLog('ERR', 'open failed: ' + (e && e.message ? e.message : e));
+                return;
+            }
             
             const textEncoder = new TextEncoderStream();
             const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
@@ -234,6 +242,9 @@ ui.connToggle.addEventListener('click', async () => {
             const textDecoder = new TextDecoderStream();
             readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
             reader = textDecoder.readable.getReader();
+
+            // Log port info for diagnostics
+            try { appendSerialLog('INFO', 'Opened serial: ' + JSON.stringify(port.getInfo())); } catch (e) {}
 
             isConnected = true; 
             keepReading = true;
@@ -358,9 +369,9 @@ function parseJSON(text) {
 async function sendRaw(payload) {
     if (!writer) return;
     try {
-        const s = JSON.stringify(payload);
+        const s = JSON.stringify(payload) + '\n'; // add newline to help device parsing and some endpoints
         await writer.write(s);
-        appendSerialLog('SENT', s);
+        appendSerialLog('SENT', s.trim());
     } catch(e){ appendSerialLog('ERR', 'sendRaw failed: ' + e); }
 }
 
@@ -611,7 +622,13 @@ comms.getBaseUrls = function() {
     const bases = [];
     if (storedDeviceIP) bases.push(`http://${storedDeviceIP}`);
     bases.push('http://zonai.local'); // try mDNS name
-    bases.push(window.location.origin); // page host
+    // Only include page origin if it's an HTTP (not HTTPS) origin or localhost (useful for local testing)
+    try {
+        const origin = window.location.origin || '';
+        if (origin.startsWith('http://') || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+            bases.push(origin);
+        }
+    } catch(e) {}
     bases.push(''); // relative
     return bases;
 }
