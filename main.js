@@ -1,7 +1,7 @@
 // --- INTRO LOGIC ---
 // FILE VERSIONS - update these when editing files
 const HTML_VERSION = 'v2.15';
-const JS_VERSION = 'v2.16';
+const JS_VERSION = 'v2.17';
 const CSS_VERSION = 'v2.3';
 
 const intro = {
@@ -838,8 +838,11 @@ async function requestStateHttpOnly(opts = {}) {
 
 async function submitWifi(ssid, pass) {
     ui.wifiStatus = document.getElementById('wifiStatus');
-    if (!ssid) { ui.wifiStatus.innerText = 'SSID required'; return; }
-    ui.wifiStatus.innerText = 'Sending...';
+    if (!ssid) {
+        if (ui.wifiStatus) ui.wifiStatus.innerText = 'SSID required';
+        return;
+    }
+    if (ui.wifiStatus) ui.wifiStatus.innerText = 'Sending...';
 
     if (comms.resolveMode() === 'serial') {
         // Fallback over serial
@@ -848,12 +851,12 @@ async function submitWifi(ssid, pass) {
             const payload = { wifi: { ssid: ssid, pass: pass }, wifi_seq: seq };
             if (wifiDiagEnabled) payload.diag = true;
             sendRaw(payload);
-            ui.wifiStatus.innerText = 'Sent via serial; waiting for device...';
+            if (ui.wifiStatus) ui.wifiStatus.innerText = 'Sent via serial; waiting for device...';
             clearPendingSerialWifi();
             pendingSerialWifi = { seq: seq, startedAt: Date.now(), httpAttempts: 0 };
             armSerialWifiTimeout(seq, WIFI_SERIAL_INITIAL_TIMEOUT_MS);
             scheduleSerialWifiHttpFallback(seq);
-        } catch (e) { ui.wifiStatus.innerText = 'Serial send failed'; }
+        } catch (e) { if (ui.wifiStatus) ui.wifiStatus.innerText = 'Serial send failed'; }
         return;
     }
 
@@ -864,18 +867,18 @@ async function submitWifi(ssid, pass) {
             const resp = await fetchWithTimeout(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ssid: ssid, pass: pass}) }, 2500);
             const j = await resp.json();
             if (resp.ok && j.ok) {
-                ui.wifiStatus.innerText = `Connected: ${j.ip || ''}`;
+                if (ui.wifiStatus) ui.wifiStatus.innerText = `Connected: ${j.ip || ''}`;
                 if (j.ip) { storedDeviceIP = j.ip; localStorage.setItem('device_ip', storedDeviceIP); if (deviceIpInput) deviceIpInput.value = storedDeviceIP; }
                 comms.requestState();
                 // close modal on success
                 hideSettingsModal();
                 return;
             } else {
-                ui.wifiStatus.innerText = `Failed: ${j.error || resp.status}`;
+                if (ui.wifiStatus) ui.wifiStatus.innerText = `Failed: ${j.error || resp.status}`;
             }
         } catch (e) { /* try next */ }
     }
-    ui.wifiStatus.innerText = 'No device responded';
+    if (ui.wifiStatus) ui.wifiStatus.innerText = 'No device responded';
 }
 
 function showSettingsModal() {
@@ -899,7 +902,8 @@ const wifiCancel = document.getElementById('wifiCancel'); if (wifiCancel) wifiCa
 const wifiSubmit = document.getElementById('wifiSubmit'); if (wifiSubmit) wifiSubmit.addEventListener('click', async () => {
     const ssid = document.getElementById('wifi_ssid').value.trim();
     const pass = document.getElementById('wifi_pass').value;
-    document.getElementById('wifiStatus').innerText = 'Attempting...';
+    const ws = document.getElementById('wifiStatus');
+    if (ws) ws.innerText = 'Attempting...';
     await submitWifi(ssid, pass);
 });
 
