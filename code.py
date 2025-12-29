@@ -392,12 +392,20 @@ while True:
                     else:
                         try:
                             # Acknowledge attempt immediately so host knows we're working
-                            try: write_serial_line(json.dumps({"status": "connecting"}) + "\n")
+                            try:
+                                # Send several quick pulses to increase the chance the host sees at least one
+                                for i in range(3):
+                                    try: write_serial_line(json.dumps({"status": "connecting", "pulse": i+1}) + "\n")
+                                    except: pass
+                                    try: append_log(f'CONNECT-PULSE-{i+1}: {ssid}')
+                                    except: pass
+                                    try: time.sleep(0.05)
+                                    except: pass
                             except: pass
                             try: append_log('CONNECT-START: ' + ssid)
                             except: pass
-                            # Give the host more time to receive the status before blocking on connect
-                            try: time.sleep(0.25)
+                            # Give the host a little more time to receive the status before blocking on connect
+                            try: time.sleep(0.35)
                             except: pass
 
                             # Attempt connection (can block for several seconds)
@@ -413,14 +421,14 @@ while True:
                                 try: append_log('CONNECT-DONE: ' + ip)
                                 except: pass
                                 # Allow a short pause so hosts can ingest this final status
-                                try: time.sleep(0.12)
+                                try: time.sleep(0.18)
                                 except: pass
                             except Exception as e:
                                 try: append_log('CONNECT-ERR: ' + str(e))
                                 except: pass
                                 try: write_serial_line(json.dumps({"status": "failed", "ok": False, "error": str(e)}) + "\n")
                                 except: pass
-                                try: time.sleep(0.12)
+                                try: time.sleep(0.18)
                                 except: pass
                         except Exception as e:
                             try: write_serial_line(json.dumps({"ok": False, "error": str(e)}) + "\n")

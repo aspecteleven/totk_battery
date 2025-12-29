@@ -352,54 +352,62 @@ function parseJSON(text) {
     try {
         appendSerialLog('RECV', text);
         if (text.indexOf('{') > -1) {
-            let jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}')+1);
-            let d = JSON.parse(jsonStr);
+            // Extract all top-level {...} objects from the text (handles concatenated JSONs)
+            const matches = text.match(/\{[^}]*\}/g);
+            if (matches && matches.length) {
+                for (const jsonStr of matches) {
+                    try {
+                        const d = JSON.parse(jsonStr);
+                        if (d && typeof d === 'object') {
+                            // WiFi serial response handling
+                            if ('status' in d) {
+                                const ws = document.getElementById('wifiStatus');
+                                if (ws) ws.innerText = d.status;
+                                appendSerialLog('INFO', 'status: ' + d.status);
+                            }
+                            if ('ack' in d) {
+                                const ws = document.getElementById('wifiStatus');
+                                if (ws) ws.innerText = 'Acknowledged';
+                                appendSerialLog('INFO', 'ack: ' + JSON.stringify(d.ack));
+                                // extend pending wait time to allow connect to complete
+                                if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
+                                // allow more time (2 minutes) for slow connects
+                                pendingSerialWifi = { timeout: setTimeout(() => { ui.wifiStatus.innerText = 'No response (serial)'; pendingSerialWifi = null; }, 120000) };
+                            }
+                            if ('ok' in d) {
+                                const ws = document.getElementById('wifiStatus');
+                                if (d.ok) {
+                                    if (d.ip) {
+                                        if (ws) ws.innerText = `Connected: ${d.ip}`;
+                                        storedDeviceIP = d.ip; localStorage.setItem('device_ip', storedDeviceIP);
+                                        if (deviceIpInput) deviceIpInput.value = storedDeviceIP;
+                                    } else {
+                                        if (ws) ws.innerText = 'OK';
+                                    }
+                                    if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
+                                    pendingSerialWifi = null;
+                                    // close settings modal and sync
+                                    hideSettingsModal();
+                                    comms.requestState();
+                                } else {
+                                    if (ws) ws.innerText = `Failed: ${d.error || 'unknown'}`;
+                                    if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
+                                    pendingSerialWifi = null;
+                                }
+                            }
 
-            // Handle control responses (non-state messages)
-            if (d && typeof d === 'object') {
-                // WiFi serial response handling
-                if ('status' in d) {
-                    const ws = document.getElementById('wifiStatus');
-                    if (ws) ws.innerText = d.status;
-                    appendSerialLog('INFO', 'status: ' + d.status);
-                }
-                if ('ack' in d) {
-                    const ws = document.getElementById('wifiStatus');
-                    if (ws) ws.innerText = 'Acknowledged';
-                    appendSerialLog('INFO', 'ack: ' + JSON.stringify(d.ack));
-                    // extend pending wait time to allow connect to complete
-                    if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
-                    pendingSerialWifi = { timeout: setTimeout(() => { ui.wifiStatus.innerText = 'No response (serial)'; pendingSerialWifi = null; }, 60000) };
-                }
-                if ('ok' in d) {
-                    const ws = document.getElementById('wifiStatus');
-                    if (d.ok) {
-                        if (d.ip) {
-                            if (ws) ws.innerText = `Connected: ${d.ip}`;
-                            storedDeviceIP = d.ip; localStorage.setItem('device_ip', storedDeviceIP);
-                            if (deviceIpInput) deviceIpInput.value = storedDeviceIP;
-                        } else {
-                            if (ws) ws.innerText = 'OK';
+                            // Merge only known appState keys
+                            let changed = false;
+                            for (let k in d) {
+                                if (k in appState) { appState[k] = d[k]; changed = true; }
+                            }
+                            if (d.mode && ui.modeSelect.value !== d.mode) ui.modeSelect.value = d.mode;
+                            if (changed && (isConnected || comms.resolveMode() === 'http')) drawControls();
                         }
-                        if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
-                        pendingSerialWifi = null;
-                        // close settings modal and sync
-                        hideSettingsModal();
-                        comms.requestState();
-                    } else {
-                        if (ws) ws.innerText = `Failed: ${d.error || 'unknown'}`;
-                        if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
-                        pendingSerialWifi = null;
+                    } catch (ex) {
+                        console.warn('parseJSON inner error', ex, jsonStr);
                     }
                 }
-
-                // Merge only known appState keys
-                let changed = false;
-                for (let k in d) {
-                    if (k in appState) { appState[k] = d[k]; changed = true; }
-                }
-                if (d.mode && ui.modeSelect.value !== d.mode) ui.modeSelect.value = d.mode;
-                if (changed && (isConnected || comms.resolveMode() === 'http')) drawControls();
             }
         }
     } catch (e) { console.warn('parseJSON error', e); }
