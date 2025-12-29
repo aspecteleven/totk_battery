@@ -315,9 +315,36 @@ while True:
                     cmd = json.loads(buffer[start:end+1])
                     for k in state:
                         if k in cmd: state[k] = cmd[k]
-                    if "save" in cmd and cmd["save"]: save_state()
+                    if "save" in cmd and cmd["save"]:
+                        save_state()
+                        try:
+                            serial.write((json.dumps({"ok": True, "saved": True}) + "\n").encode())
+                        except: pass
                     if "get_state" in cmd:
-                        serial.write((json.dumps(state) + "\n").encode())
+                        try:
+                            serial.write((json.dumps(state) + "\n").encode())
+                        except: pass
+                    if "wifi" in cmd:
+                        wifi_cmd = cmd.get("wifi") or {}
+                        ssid = wifi_cmd.get("ssid")
+                        password = wifi_cmd.get("pass") or wifi_cmd.get("password")
+                        if not ssid:
+                            try: serial.write((json.dumps({"ok": False, "error": "missing ssid"}) + "\n").encode())
+                            except: pass
+                        elif not wifi_available:
+                            try: serial.write((json.dumps({"ok": False, "error": "wifi_unavailable"}) + "\n").encode())
+                            except: pass
+                        else:
+                            try:
+                                wifi.radio.connect(ssid, password)
+                                save_wifi_creds(ssid, password)
+                                start_http_server()
+                                ip = str(wifi.radio.ipv4_address)
+                                try: serial.write((json.dumps({"ok": True, "ip": ip}) + "\n").encode())
+                                except: pass
+                            except Exception as e:
+                                try: serial.write((json.dumps({"ok": False, "error": str(e)}) + "\n").encode())
+                                except: pass
                 except: pass
             buffer = buffer[end+1:]
 
