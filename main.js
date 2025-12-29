@@ -1,7 +1,7 @@
 // --- INTRO LOGIC ---
 // FILE VERSIONS - update these when editing files
-const HTML_VERSION = 'v2.14';
-const JS_VERSION = 'v2.15';
+const HTML_VERSION = 'v2.15';
+const JS_VERSION = 'v2.16';
 const CSS_VERSION = 'v2.3';
 
 const intro = {
@@ -106,6 +106,13 @@ let isOfflineMode = false;
 let serialBuffer = "";
 let pendingSerialWifi = null; // { timeout }
 let settingsOverlay = null;
+let wifiSeqCounter = 0;
+let wifiDiagEnabled = (localStorage.getItem('wifi_diag') === 'true');
+const WIFI_SERIAL_INITIAL_TIMEOUT_MS = 20000;
+const WIFI_SERIAL_EXTENDED_TIMEOUT_MS = 120000;
+const WIFI_HTTP_FALLBACK_DELAY_MS = 6000;
+const WIFI_HTTP_FALLBACK_RETRY_MS = 3000;
+const WIFI_HTTP_FALLBACK_MAX_ATTEMPTS = 4;
 
 // Asset base (for CDN or GitHub Pages) and comms mode
 let ASSET_BASE = localStorage.getItem('asset_base') || '';
@@ -282,6 +289,9 @@ ui.connToggle.addEventListener('click', async () => {
             
             enableControls('usb');
             readLoop(); 
+            if (wifiDiagEnabled) {
+                try { sendRaw({ diag: true }); } catch (e) {}
+            }
             
             // Request State to sync UI
             setTimeout(() => { comms.requestState(); }, 400);
@@ -309,9 +319,11 @@ ui.connToggle.addEventListener('click', async () => {
                 port = null;
             }
             isConnected = false;
+            clearPendingSerialWifi();
             enableControls('locked');
         } catch(e) {
             isConnected = false;
+            clearPendingSerialWifi();
             enableControls('locked');
         }
     }
@@ -348,6 +360,63 @@ function appendSerialLog(dir, text) {
     } catch(e){}
 }
 
+function nextWifiSeq() {
+    wifiSeqCounter = (wifiSeqCounter + 1) % 1000000;
+    return wifiSeqCounter;
+}
+
+function clearPendingSerialWifi() {
+    if (!pendingSerialWifi) return;
+    if (pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
+    if (pendingSerialWifi.httpTimer) clearTimeout(pendingSerialWifi.httpTimer);
+    pendingSerialWifi = null;
+}
+
+function armSerialWifiTimeout(seq, ms) {
+    if (!pendingSerialWifi || pendingSerialWifi.seq !== seq) return;
+    if (pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
+    pendingSerialWifi.timeout = setTimeout(() => {
+        if (pendingSerialWifi && pendingSerialWifi.seq === seq) {
+            const ws = document.getElementById('wifiStatus');
+            if (ws) ws.innerText = 'No response (serial)';
+            appendSerialLog('INFO', 'WiFi serial timeout');
+            clearPendingSerialWifi();
+        }
+    }, ms);
+}
+
+function scheduleSerialWifiHttpFallback(seq) {
+    if (!pendingSerialWifi || pendingSerialWifi.seq !== seq) return;
+    if (pendingSerialWifi.httpTimer) clearTimeout(pendingSerialWifi.httpTimer);
+    pendingSerialWifi.httpTimer = setTimeout(() => { serialWifiHttpFallback(seq); }, WIFI_HTTP_FALLBACK_DELAY_MS);
+}
+
+async function serialWifiHttpFallback(seq) {
+    if (!pendingSerialWifi || pendingSerialWifi.seq !== seq) return;
+    pendingSerialWifi.httpAttempts = (pendingSerialWifi.httpAttempts || 0) + 1;
+    const attempt = pendingSerialWifi.httpAttempts;
+    const ws = document.getElementById('wifiStatus');
+    if (ws) ws.innerText = `Checking WiFi (HTTP ${attempt}/${WIFI_HTTP_FALLBACK_MAX_ATTEMPTS})...`;
+    appendSerialLog('INFO', `HTTP fallback attempt ${attempt}/${WIFI_HTTP_FALLBACK_MAX_ATTEMPTS}`);
+    const base = await requestStateHttpOnly({ updateControls: !isConnected });
+    if (base !== null) {
+        const label = base ? `Connected (HTTP check: ${base})` : 'Connected (HTTP check)';
+        if (ws) ws.innerText = label;
+        appendSerialLog('INFO', 'HTTP fallback success');
+        clearPendingSerialWifi();
+        return;
+    }
+    if (pendingSerialWifi && pendingSerialWifi.seq === seq && attempt < WIFI_HTTP_FALLBACK_MAX_ATTEMPTS) {
+        pendingSerialWifi.httpTimer = setTimeout(() => { serialWifiHttpFallback(seq); }, WIFI_HTTP_FALLBACK_RETRY_MS);
+    }
+}
+
+function wifiSeqMatches(msgSeq) {
+    if (!pendingSerialWifi) return true;
+    if (msgSeq === undefined || msgSeq === null) return true;
+    return msgSeq === pendingSerialWifi.seq;
+}
+
 function parseJSON(text) {
     try {
         appendSerialLog('RECV', text);
@@ -360,40 +429,52 @@ function parseJSON(text) {
                         const d = JSON.parse(jsonStr);
                         if (d && typeof d === 'object') {
                             // WiFi serial response handling
-                            if ('status' in d) {
+                            const msgSeq = ('wifi_seq' in d) ? d.wifi_seq : null;
+                            const seqMatches = wifiSeqMatches(msgSeq);
+                            const statusVal = (typeof d.status === 'string') ? d.status : null;
+                            const statusIsFinal = statusVal === 'connected' || statusVal === 'failed';
+                            const wifiAck = Array.isArray(d.ack) && (d.ack.includes('wifi') || d.ack.includes('wifi_seq'));
+                            const wifiOkMessage = ('ok' in d) && (statusVal || ('ip' in d) || ('error' in d) || ('wifi_seq' in d));
+
+                            if ('status' in d && seqMatches) {
                                 const ws = document.getElementById('wifiStatus');
-                                if (ws) ws.innerText = d.status;
+                                let statusText = d.status;
+                                if (d.status === 'connecting' && typeof d.pulse === 'number') statusText = `Connecting (${d.pulse})...`;
+                                if (ws) ws.innerText = statusText;
                                 appendSerialLog('INFO', 'status: ' + d.status);
+                                if (pendingSerialWifi) armSerialWifiTimeout(pendingSerialWifi.seq, WIFI_SERIAL_EXTENDED_TIMEOUT_MS);
+                            } else if ('status' in d && pendingSerialWifi && !seqMatches) {
+                                appendSerialLog('INFO', 'status ignored (seq mismatch)');
                             }
-                            if ('ack' in d) {
+
+                            if (wifiAck && seqMatches) {
                                 const ws = document.getElementById('wifiStatus');
                                 if (ws) ws.innerText = 'Acknowledged';
                                 appendSerialLog('INFO', 'ack: ' + JSON.stringify(d.ack));
-                                // extend pending wait time to allow connect to complete
-                                if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
-                                // allow more time (2 minutes) for slow connects
-                                pendingSerialWifi = { timeout: setTimeout(() => { ui.wifiStatus.innerText = 'No response (serial)'; pendingSerialWifi = null; }, 120000) };
+                                if (pendingSerialWifi) armSerialWifiTimeout(pendingSerialWifi.seq, WIFI_SERIAL_EXTENDED_TIMEOUT_MS);
                             }
-                            if ('ok' in d) {
+
+                            if ((wifiOkMessage || statusIsFinal || d.done === true) && seqMatches) {
                                 const ws = document.getElementById('wifiStatus');
-                                if (d.ok) {
+                                const okVal = ('ok' in d) ? !!d.ok : (statusVal === 'connected');
+                                if (okVal) {
                                     if (d.ip) {
                                         if (ws) ws.innerText = `Connected: ${d.ip}`;
                                         storedDeviceIP = d.ip; localStorage.setItem('device_ip', storedDeviceIP);
                                         if (deviceIpInput) deviceIpInput.value = storedDeviceIP;
                                     } else {
-                                        if (ws) ws.innerText = 'OK';
+                                        if (ws) ws.innerText = 'Connected';
                                     }
-                                    if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
-                                    pendingSerialWifi = null;
+                                    clearPendingSerialWifi();
                                     // close settings modal and sync
                                     hideSettingsModal();
                                     comms.requestState();
                                 } else {
                                     if (ws) ws.innerText = `Failed: ${d.error || 'unknown'}`;
-                                    if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
-                                    pendingSerialWifi = null;
+                                    clearPendingSerialWifi();
                                 }
+                            } else if ((wifiOkMessage || statusIsFinal || d.done === true) && pendingSerialWifi && !seqMatches) {
+                                appendSerialLog('INFO', 'final WiFi status ignored (seq mismatch)');
                             }
 
                             // Merge only known appState keys
@@ -642,6 +723,17 @@ const assetInput = document.getElementById('assetBase');
 const applyAssetsBtn = document.getElementById('applyAssetsBtn');
 if (assetInput) assetInput.value = ASSET_BASE || '';
 if (applyAssetsBtn) applyAssetsBtn.addEventListener('click', () => { const base = assetInput.value.trim(); applyAssets(base); ui.status.innerText = 'Assets applied'; });
+const wifiDiagToggle = document.getElementById('wifiDiagToggle');
+if (wifiDiagToggle) {
+    wifiDiagToggle.checked = wifiDiagEnabled;
+    wifiDiagToggle.addEventListener('change', () => {
+        wifiDiagEnabled = wifiDiagToggle.checked;
+        localStorage.setItem('wifi_diag', wifiDiagEnabled);
+        if (isConnected) {
+            try { sendRaw({ diag: wifiDiagEnabled }); } catch (e) {}
+        }
+    });
+}
 
 // If in HTTP preferred mode at startup, try to sync state
 if (comms.resolveMode() === 'http') comms.requestState();
@@ -665,19 +757,20 @@ async function fetchWithTimeout(url, opts={}, timeout=1500) {
     }
 }
 
-comms.getBaseUrls = function() {
+function getHttpBasesSafe() {
     const bases = [];
-    if (storedDeviceIP) bases.push(`http://${storedDeviceIP}`);
-    bases.push('http://zonai.local'); // try mDNS name
-    // Only include page origin if it's an HTTP (not HTTPS) origin or localhost (useful for local testing)
-    try {
-        const origin = window.location.origin || '';
-        if (origin.startsWith('http://') || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-            bases.push(origin);
-        }
-    } catch(e) {}
+    let origin = '';
+    try { origin = window.location.origin || ''; } catch (e) { origin = ''; }
+    const pageIsHttp = origin.startsWith('http://') || origin.startsWith('file://') || origin.includes('localhost') || origin.includes('127.0.0.1') || origin === 'null';
+    if (storedDeviceIP && pageIsHttp) bases.push(`http://${storedDeviceIP}`);
+    if (pageIsHttp) bases.push('http://zonai.local'); // try mDNS name
+    if (pageIsHttp && origin && origin !== 'null') bases.push(origin);
     bases.push(''); // relative
     return bases;
+}
+
+comms.getBaseUrls = function() {
+    return getHttpBasesSafe();
 }
 
 comms.requestState = async function() {
@@ -715,6 +808,34 @@ comms.requestState = async function() {
     ui.status.innerText = 'No HTTP device';
 }
 
+async function requestStateHttpOnly(opts = {}) {
+    const updateControls = opts.updateControls !== false;
+    for (const base of getHttpBasesSafe()) {
+        let url = base ? `${base}/state` : '/state';
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                const resp = await fetchWithTimeout(url, {}, 1200);
+                if (resp.ok) {
+                    const d = await resp.json();
+                    Object.assign(appState, d);
+                    if (base && base.startsWith('http://') && base !== window.location.origin) {
+                        const detected = base.replace('http://','');
+                        storedDeviceIP = detected.split('/')[0];
+                        localStorage.setItem('device_ip', storedDeviceIP);
+                        if (deviceIpInput) deviceIpInput.value = storedDeviceIP;
+                    }
+                    if (updateControls) enableControls('http');
+                    drawControls();
+                    return base;
+                }
+            } catch (e) {
+                if (attempt === 0) await new Promise(r => setTimeout(r, 220));
+            }
+        }
+    }
+    return null;
+}
+
 async function submitWifi(ssid, pass) {
     ui.wifiStatus = document.getElementById('wifiStatus');
     if (!ssid) { ui.wifiStatus.innerText = 'SSID required'; return; }
@@ -723,10 +844,15 @@ async function submitWifi(ssid, pass) {
     if (comms.resolveMode() === 'serial') {
         // Fallback over serial
         try {
-            sendRaw({ wifi: { ssid: ssid, pass: pass } });
-            ui.wifiStatus.innerText = 'Sent via serial — waiting for device...';
-            if (pendingSerialWifi && pendingSerialWifi.timeout) clearTimeout(pendingSerialWifi.timeout);
-            pendingSerialWifi = { timeout: setTimeout(() => { ui.wifiStatus.innerText = 'No response (serial)'; pendingSerialWifi = null; }, 20000) };
+            const seq = nextWifiSeq();
+            const payload = { wifi: { ssid: ssid, pass: pass }, wifi_seq: seq };
+            if (wifiDiagEnabled) payload.diag = true;
+            sendRaw(payload);
+            ui.wifiStatus.innerText = 'Sent via serial; waiting for device...';
+            clearPendingSerialWifi();
+            pendingSerialWifi = { seq: seq, startedAt: Date.now(), httpAttempts: 0 };
+            armSerialWifiTimeout(seq, WIFI_SERIAL_INITIAL_TIMEOUT_MS);
+            scheduleSerialWifiHttpFallback(seq);
         } catch (e) { ui.wifiStatus.innerText = 'Serial send failed'; }
         return;
     }
@@ -757,6 +883,7 @@ function showSettingsModal() {
     const ws = document.getElementById('wifiStatus'); if(ws) ws.innerText='';
     const assetEl = document.getElementById('assetBase'); if (assetEl) assetEl.value = ASSET_BASE || document.getElementById('githubUrl')?.value || '';
     const deviceIpEl = document.getElementById('deviceIp'); if (deviceIpEl) deviceIpEl.value = storedDeviceIP || '';
+    const diagEl = document.getElementById('wifiDiagToggle'); if (diagEl) diagEl.checked = wifiDiagEnabled;
     // Hook up log buttons
     const clearBtn = document.getElementById('clearLog'); if (clearBtn) clearBtn.addEventListener('click', () => { const el = document.getElementById('serialLog'); if (el) el.textContent = ''; });
     const downloadBtn = document.getElementById('downloadLog'); if (downloadBtn) downloadBtn.addEventListener('click', () => { const el = document.getElementById('serialLog'); if (!el) return; const blob = new Blob([el.textContent], {type:'text/plain'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'serial_log.txt'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
@@ -779,7 +906,7 @@ const wifiSubmit = document.getElementById('wifiSubmit'); if (wifiSubmit) wifiSu
 // Update versions display (if present in DOM)
 try {
     const verEl = document.getElementById('versions');
-    if (verEl) verEl.innerText = `HTML ${HTML_VERSION} · JS ${JS_VERSION} · CSS ${CSS_VERSION}`;
+    if (verEl) verEl.innerText = `HTML ${HTML_VERSION} | JS ${JS_VERSION} | CSS ${CSS_VERSION}`;
 } catch (e) {}
 
 

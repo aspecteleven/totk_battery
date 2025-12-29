@@ -61,14 +61,14 @@
 
             <div class="dashboard-section sec-actions">
                 <button id="defaultBtn" disabled>Defaults</button>
-                <button id="settingsBtn" title="Settings" style="padding:8px;border-radius:6px;font-size:16px;">⚙️</button>
+                <button id="settingsBtn" title="Settings" style="padding:8px;border-radius:6px;font-size:12px;">Settings</button>
                 <div class="status" id="statusText">Ready</div>
             </div>
 
             <!-- Settings overlay (WiFi, Device IP, Assets) -->
             <div id="settingsOverlay" class="hidden" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:600;padding:20px;">
                 <div id="settingsModal" style="background:#08121a;padding:18px;border-radius:8px;border:1px solid #333;margin-top:-700px;min-width:320px;max-width:640px;position:relative;color:#ccc;">
-                    <button id="settingsClose" title="Close" style="position:absolute;top:8px;right:8px;padding:6px;border-radius:6px;background:transparent;color:#ccc;border:none;cursor:pointer;">✕</button>
+                    <button id="settingsClose" title="Close" style="position:absolute;top:8px;right:8px;padding:6px;border-radius:6px;background:transparent;color:#ccc;border:none;cursor:pointer;">X</button>
                     <h3 style="margin:0 0 10px 0;color:var(--accent);">Settings</h3>
 
                     <div style="display:flex;flex-direction:column;gap:10px;">
@@ -102,7 +102,11 @@
                             <button id="wifiCancel" style="padding:8px;border-radius:4px;">Cancel</button>
                             <button id="wifiSubmit" style="padding:8px;border-radius:4px;">Connect</button>
                         </div>
-                        <div id="wifiStatus" style="font-size:12px;color:#aaa;margin-top:6px;"></div>
+                        
+                        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                            <input type="checkbox" id="wifiDiagToggle" />
+                            <label for="wifiDiagToggle" style="font-size:12px;color:#aaa;">Enable WiFi diagnostics (serial heartbeats)</label>
+                        </div>
                         <hr style="border:none;border-top:1px solid #222;margin:8px 0;" />
                         <div style="font-size:12px;color:#aaa;">Serial Log</div>
                         <div style="display:flex;gap:8px;margin-top:6px;">
@@ -119,7 +123,7 @@
         </div>
         
     </div>
-<div class="versions" id="versions">HTML v2.14 · JS v2.15 · CSS v2.3</div>
+<div class="versions" id="versions">HTML v2.15 | JS v2.16 | CSS v2.3</div>
 
     <script src="main.js"></script>
 </body>
