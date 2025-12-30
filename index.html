@@ -19,10 +19,21 @@
         <div class="intro-symbol"></div>
         <div class="intro-text-area">
             <div class="intro-prompt" id="introPrompt">Greetings, traveler! May I know your name?</div>
-            <input type="text" id="nameInput" autocomplete="off" maxlength="15">
+            <div class="name-input-wrap">
+                <input type="text" id="nameInput" autocomplete="off" maxlength="15">
+                                <div class="intro-btn-wrap intro-btn-inline">
+                    <button class="intro-btn intro-btn-inline hidden" id="submitNameBtn" type="button" aria-label="Submit Name" title="Submit name">›</button>
+                    <span class="btn-fx btn-fx-before" aria-hidden="true"></span>
+                    <span class="btn-fx btn-fx-after" aria-hidden="true"></span>
+                </div>
+            </div>
             <div class="intro-welcome" id="introWelcome"></div>
         </div>
-        <button class="intro-btn" id="continueBtn">Continue</button>
+                <div class="intro-btn-wrap">
+            <button class="intro-btn" id="continueBtn">Continue</button>
+            <span class="btn-fx btn-fx-before" aria-hidden="true"></span>
+            <span class="btn-fx btn-fx-after" aria-hidden="true"></span>
+        </div>
     </div>
 
     <!-- MAIN APP WRAPPER -->
@@ -60,7 +71,18 @@
         </div>
         
     </div>
-    <div class="version">v2.12</div>
+    <div class="version">HTML v2.19 | CSS v2.19 | JS v2.15</div>
+    <div id="resetModal" class="modal hidden" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+            <div class="modal-title" id="resetTitle">Reset User</div>
+            <div class="modal-body">Reset user name and show intro again?</div>
+            <div class="modal-actions">
+                <button class="modal-btn" id="resetCancel">Cancel</button>
+                <button class="modal-btn modal-btn-danger" id="resetConfirm">Reset</button>
+            </div>
+        </div>
+    </div>
     <script src="main.js" defer></script>
 </body>
 </html>

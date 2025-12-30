@@ -7,32 +7,57 @@ const intro = {
     btn: document.getElementById('continueBtn'),
     main: document.getElementById('mainApp'),
     resetBtn: document.getElementById('resetUserBtn'),
-    offlineBtn: document.getElementById('offlineBtn')
+    offlineBtn: document.getElementById('offlineBtn'),
+    submitBtn: document.getElementById('submitNameBtn'),
+    resetModal: document.getElementById('resetModal'),
+    resetCancel: document.getElementById('resetCancel'),
+    resetConfirm: document.getElementById('resetConfirm'),
+    resetBackdrop: document.querySelector('#resetModal .modal-backdrop')
 };
 
 // Reset Logic
 intro.resetBtn.addEventListener('click', () => {
-    if(confirm("Reset user name and show intro again?")) {
-        localStorage.removeItem('zonai_user');
-        location.reload();
-    }
+    openResetModal();
 });
+
+intro.resetCancel.addEventListener('click', closeResetModal);
+intro.resetBackdrop.addEventListener('click', closeResetModal);
+intro.resetConfirm.addEventListener('click', () => {
+    localStorage.removeItem('zonai_user');
+    location.reload();
+});
+
+function openResetModal() {
+    intro.resetModal.classList.remove('hidden');
+    intro.resetModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeResetModal() {
+    intro.resetModal.classList.add('hidden');
+    intro.resetModal.setAttribute('aria-hidden', 'true');
+}
 
 function initIntro() {
     const savedName = localStorage.getItem('zonai_user');
     if (savedName) {
         intro.prompt.style.display = 'none';
         intro.input.style.display = 'none';
+        setSubmitVisibility(false);
         setTimeout(() => {
             typeWriter(`Welcome back, ${savedName}.<br>The Shrine awaits.`);
         }, 500);
     } else {
         intro.input.focus();
+        updateSubmitVisibility();
     }
 }
 
 intro.input.addEventListener('keydown', (e) => {
     if(e.key === "Enter" && intro.input.value.trim() !== "") submitName();
+});
+intro.input.addEventListener('input', updateSubmitVisibility);
+intro.submitBtn.addEventListener('click', () => {
+    if (intro.input.value.trim() !== "") submitName();
 });
 
 function submitName() {
@@ -41,7 +66,23 @@ function submitName() {
     localStorage.setItem('zonai_user', name);
     intro.input.style.display = 'none';
     intro.prompt.style.display = 'none';
+    setSubmitVisibility(false);
     typeWriter(`Welcome, ${name}.<br>Enjoy your Zonai Lantern.`);
+}
+
+function updateSubmitVisibility() {
+    const hasName = intro.input.value.trim().length > 0;
+    setSubmitVisibility(hasName);
+}
+
+function setSubmitVisibility(show) {
+    if (show) {
+        intro.submitBtn.classList.remove('hidden');
+        intro.submitBtn.classList.add('visible');
+    } else {
+        intro.submitBtn.classList.add('hidden');
+        intro.submitBtn.classList.remove('visible');
+    }
 }
 
 function typeWriter(text) {

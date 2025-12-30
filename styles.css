@@ -29,6 +29,7 @@ body {
     border: 1px solid rgba(255,255,255,0.3); border-radius: 4px;
     opacity: 0.4; transition: 0.3s;
 }
+
 #resetUserBtn:hover { opacity: 1; background: var(--accent); border-color: #fff; }
 
 /* Demo Mode (Yellow) - Hidden initially */
@@ -96,23 +97,134 @@ body {
     max-width: 900px; line-height: 1.4; 
 }
 
-#nameInput {
-    background: rgba(0,0,0,0.5); border: 1px solid var(--accent-dim);
-    color: var(--accent); padding: 10px 20px; font-size: 24px; text-align: center;
-    border-radius: 4px; outline: none; width: 350px; text-transform: uppercase;
-    letter-spacing: 2px; transition: 0.3s;
+.name-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 350px;
+    max-width: 90vw;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--accent-dim);
+    border-radius: 4px;
+    padding: 6px 8px;
+    transition: 0.3s;
 }
-#nameInput:focus { border-color: var(--accent); box-shadow: 0 0 15px rgba(91, 192, 207, 0.3); }
+.name-input-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 15px rgba(91, 192, 207, 0.3); }
+#nameInput {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    padding: 6px 8px 6px 8px;
+    font-size: 24px;
+    text-align: center;
+    outline: none;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+.intro-btn-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.intro-btn-wrap.intro-btn-inline {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.intro-btn.intro-btn-inline {
+    margin-top: 0;
+    padding: 6px 12px;
+    min-width: 36px;
+    height: 36px;
+    font-size: 18px;
+    letter-spacing: 0;
+    transform: none;
+    transition: opacity 0.3s;
+    z-index: 1;
+}
+.intro-btn.intro-btn-inline.visible {
+    transform: none;
+}
 
 .intro-btn {
-    background: var(--accent); color: #10222e; border: none;
+    position: relative;
+    background-color: var(--accent); color: #10222e; border: none;
     padding: 12px 40px; font-weight: bold; text-transform: uppercase;
     letter-spacing: 2px; cursor: pointer; margin-top: 30px;
     border-radius: 2px; opacity: 0; transform: translateY(10px);
     transition: 1s; pointer-events: none; font-size: 16px;
+    z-index: 1;
+    overflow: visible;
+    /*border-radius:25px;*/
+    
 }
 .intro-btn.visible { opacity: 1; transform: translateY(0); pointer-events: all; }
-.intro-btn:hover { background: #fff; box-shadow: 0 0 20px #fff; }
+
+@keyframes submitBTN {
+  from {box-shadow: 0 0 20px #ffffff96;}
+  to {box-shadow: 0 0 10px #fff; }
+}
+
+.intro-btn:hover { 
+    background-color: #fff; 
+    box-shadow: 0 0 20px #fff; 
+    animation-name: submitBTN;
+    animation-duration: 2s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+    transition: box-shadow 1s, background-color 2s;
+    
+}
+
+
+@keyframes subBTNb {
+  from {rotate:0deg;}
+  to {rotate:360deg;}
+}
+
+@keyframes subBTNa {
+  from {rotate:0deg;}
+  to {rotate:360deg;}
+}
+
+.btn-fx {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    width: 26px;
+    height: 26px;
+    opacity: 0;
+    border-radius: 5px;
+    pointer-events: none;
+    z-index: -1;
+    transition: opacity 2s;
+}
+.btn-fx-before {
+    background: transparent;
+    box-shadow: 0 0 10px 5px #9fecffb7;
+    animation-name: subBTNb;
+    animation-duration: 4s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+.btn-fx-after {
+    background: transparent;
+    box-shadow: 0 0 10px 5px #debe095c;
+    animation-name: subBTNa;
+    animation-duration: 4s;
+    animation-timing-function: ease-in-out;
+    animation-direction: alternate-reverse;
+    animation-iteration-count: infinite;
+    animation-delay: 5ms;
+}
+.intro-btn:hover ~ .btn-fx {
+    opacity: 1;
+}
+
 
 .mist-out { animation: mistVanish 2.5s forwards; }
 @keyframes mistVanish {
@@ -222,6 +334,75 @@ input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent);
 .custom-slider-container.disabled .custom-slider-highlight { background: #555; box-shadow: none; }
 .custom-slider-container.disabled .thumb { border-color: #555; cursor: not-allowed; }
 
+.modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1500;
+}
+.modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 30% 20%, rgba(91, 192, 207, 0.15), rgba(9, 19, 32, 0.85));
+    backdrop-filter: blur(6px);
+}
+.modal-panel {
+    position: relative;
+    width: min(420px, 90vw);
+    border: 1px solid var(--accent-dim);
+    border-radius: 12px;
+    background: rgba(16, 34, 46, 0.98);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    padding: 18px 20px 16px;
+    z-index: 1;
+}
+.modal-title {
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+}
+.modal-body {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.4;
+    margin-bottom: 16px;
+}
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+.modal-btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: 0.2s;
+}
+.modal-btn:hover {
+    color: #fff;
+    border-color: #fff;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+}
+.modal-btn-danger {
+    border-color: #ff6b6b;
+    color: #ff6b6b;
+}
+.modal-btn-danger:hover {
+    background: #ff6b6b;
+    color: #000;
+    box-shadow: 0 0 12px rgba(255, 107, 107, 0.4);
+}
+
 .hidden { display: none !important; }
-.version { position: fixed; bottom: 5px; right: 10px; color: rgba(255,255,255,0.1); font-size: 10px; pointer-events: none; z-index: 501; }
+.version { position: fixed; bottom: 5px; right: 10px; color: rgba(255,255,255,0.1); font-size: 10px; pointer-events: none; z-index: 9999; }
     
