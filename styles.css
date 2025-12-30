@@ -22,14 +22,14 @@ body {
 #resetUserBtn {
     position: fixed; bottom: 20px; left: 20px;
     width: 30px; height: 30px; 
-    background: #8b0000; color: white;
+    background: var(--text); color: white;
     font-family: sans-serif; font-weight: bold;
     display: flex; justify-content: center; align-items: center;
     cursor: pointer; z-index: 999; 
     border: 1px solid rgba(255,255,255,0.3); border-radius: 4px;
     opacity: 0.4; transition: 0.3s;
 }
-#resetUserBtn:hover { opacity: 1; background: #ff0000; border-color: #fff; }
+#resetUserBtn:hover { opacity: 1; background: var(--accent); border-color: #fff; }
 
 /* Demo Mode (Yellow) - Hidden initially */
 #offlineBtn {
@@ -223,5 +223,5 @@ input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent);
 .custom-slider-container.disabled .thumb { border-color: #555; cursor: not-allowed; }
 
 .hidden { display: none !important; }
-.version { position: fixed; bottom: 5px; right: 10px; color: rgba(255,255,255,0.1); font-size: 10px; pointer-events: none; }
+.version { position: fixed; bottom: 5px; right: 10px; color: rgba(255,255,255,0.1); font-size: 10px; pointer-events: none; z-index: 501; }
     
