@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zonai Lantern - Panels</title>
+    <!-- VERSION = "v0.12" -->
+    <link rel="stylesheet" href="panels.css">
+    <link rel="stylesheet" href="panel10_app.css">
+</head>
+<body>
+    <div id="canvas" aria-hidden="true">
+        <div id="webgl-plane" class="webgl-plane"></div>
+    </div>
+    <main class="panels" data-active="1">
+        <section class="panel panel-1 panel-title is-active" data-panel="1" aria-hidden="false">
+            <div class="panel-bg-wrapper">
+                <img class="panel-bg" src="../images/title_bg.webp" data-sampler="panelTexture" alt="">
+            </div>
+            <div class="panel-content">
+                <img class="title-logo" src="../images/totk_logo.webp" alt="Tears of the Kingdom">
+
+                <nav class="menu" aria-label="Title Menu" data-unlocked="false">
+                    <button class="menu-item" data-index="0" type="button">New Game</button>
+                    <button class="menu-item is-locked" data-index="1" type="button" disabled>Continue</button>
+                    <button class="menu-item is-locked" data-index="2" type="button" disabled>Options</button>
+                    <div class="menu-arrows" aria-hidden="true">
+                        <img class="menu-arrow left" src="../images/titleScreen_arrow.webp" alt="">
+                        <img class="menu-arrow right" src="../images/titleScreen_arrow.webp" alt="">
+                    </div>
+                </nav>
+            </div>
+        </section>
+
+        <section class="panel panel-2 panel-intro" data-panel="2" aria-hidden="true">
+            <div class="panel-bg-wrapper">
+                <img class="panel-bg" src="../images/panel2_intro_bg.webp" data-sampler="panelTexture" alt="">
+            </div>
+            <div class="panel-content"></div>
+        </section>
+
+        <section class="panel panel-3 panel-dialog" data-panel="3" aria-hidden="true">
+            <div class="panel-bg-wrapper">
+                <img class="panel-bg" src="../images/panel3_yoName_bg.webp" data-sampler="panelTexture" alt="">
+            </div>
+            <div class="panel-content">
+                <div class="dialog">
+                    <img class="dialog-symbol left" src="../images/panel3_yoName_dialogSymbol.webp" alt="">
+                    <img class="dialog-symbol right" src="../images/panel3_yoName_dialogSymbol.webp" alt="">
+
+                    <div class="dialog-name">Steward Construct</div>
+                    <p class="dialog-body" data-typewriter="true">
+                        Greetings, young traveller, I am a <span class="dialog-red">Zonai Steward Construct.</span> I will be helping along your journey. <span class="dialog-red">What is your name?</span>
+                    </p>
+                </div>
+                <button class="enter-btn typewriter-button is-hidden" type="button">
+                    <span class="enter-btn-triangle" aria-hidden="true"></span>
+                    <span class="enter-btn-label">Enter your name.</span>
+                </button>
+                <div class="name-popup-overlay" aria-hidden="true">
+                    <div class="name-popup-backdrop" data-name-popup-close></div>
+                    <div class="name-popup" role="dialog" aria-modal="true" aria-label="Enter your name">
+                        <div class="name-input-wrap">
+                            <input class="name-input" id="panelNameInput" type="text" autocomplete="off" maxlength="15">
+                            <button class="name-submit-btn" id="panelNameSubmit" type="button" aria-label="Submit Name">›</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel panel-4 panel-enter" data-panel="4" aria-hidden="true">
+            <div class="panel-bg-wrapper">
+                <img class="panel-bg" src="../images/panel4_enterShrine_bg.webp" data-sampler="panelTexture" alt="">
+            </div>
+            <div class="panel-content"></div>
+        </section>
+
+        <section class="panel panel-5 panel-arrival" data-panel="5" aria-hidden="true">
+            <div class="panel-bg-wrapper">
+                <img class="panel-bg" src="../images/panel5_arrival_bg.webp" data-sampler="panelTexture" alt="">
+            </div>
+            <div class="panel-content"></div>
+        </section>
+
+        <section class="panel panel-6 panel-blessing" data-panel="6" aria-hidden="true">
+            <div class="panel-bg-wrapper">
+                <img class="panel-bg" src="../images/panel6_blessing_bg.webp" data-sampler="panelTexture" alt="">
+            </div>
+            <div class="panel-content">
+                <img class="blessing-text" src="../images/panel6_blessing_text.webp" alt="Aundru's Blessing - Kish-inbo Shrine">
+            </div>
+        </section>
+
+        <section class="panel panel-7 panel-reward" data-panel="7" aria-hidden="true">
+            <div class="panel-bg-wrapper">
+                <img class="panel-bg" src="../images/panel7_reward_bg.webp" data-sampler="panelTexture" alt="">
+            </div>
+            <div class="panel-content">
+                <div class="reward-popup">
+                    <div class="reward-rect-wrap">
+                        <div class="reward-rect" aria-hidden="true"></div>
+                        <div class="reward-flare base" aria-hidden="true"></div>
+                        <div class="reward-flare specs" aria-hidden="true"></div>
+                        <img class="reward-lantern" src="../images/panel7_reward_lantern.webp" alt="Shrine Battery Lantern">
+                        <img class="reward-rings" src="../images/panel7_reward_rings.webp" alt="" aria-hidden="true">
+                        <div class="reward-text">
+                            <div class="reward-title">Shrine Battery Lantern</div>
+                        <p class="reward-body" data-typewriter="true">
+                            A device modeled after the energy sources of the Zonai. Its inner light
+                            was restored by a craftsman of another realm. The core glows with a warm
+                            radiance, banishing the shadows of a workstation.
+                        </p>
+                        </div>
+                        <img class="reward-triangle" src="../images/element_leftTriangle.webp" alt="" aria-hidden="true">
+                    </div>
+                    <img class="reward-side left" src="../images/panel7_reward_graphicalSide.webp" alt="" aria-hidden="true">
+                    <img class="reward-side right" src="../images/panel7_reward_graphicalSide.webp" alt="" aria-hidden="true">
+                </div>
+            </div>
+        </section>
+
+        <section class="panel panel-8 panel-dialog" data-panel="8" aria-hidden="true">
+            <div class="panel-bg-wrapper">
+                <img class="panel-bg" src="../images/panel8_purah_bg.webp" data-sampler="panelTexture" alt="">
+            </div>
+            <div class="panel-content">
+                <div class="dialog">
+                    <img class="dialog-symbol left" src="../images/panel3_yoName_dialogSymbol.webp" alt="">
+                    <img class="dialog-symbol right" src="../images/panel3_yoName_dialogSymbol.webp" alt="">
+
+                    <div class="dialog-name">Purah</div>
+                    <p class="dialog-body" data-typewriter="true">
+                        [Name] <span class="dialog-red">Zonai</span>
+                        <span class="dialog-red">Steward Construct</span> I will be helping along
+                        your journey. <span class="dialog-red">What is your name?</span>
+                    </p>
+                </div>
+                <button class="enter-btn typewriter-button is-hidden" type="button">
+                    <span class="enter-btn-triangle" aria-hidden="true"></span>
+                    <span class="enter-btn-label">Enter your name.</span>
+                </button>
+            </div>
+        </section>
+
+        <section class="panel panel-9 panel-placeholder" data-panel="9" aria-hidden="true">
+            <div class="panel-content">
+                <div class="placeholder-text">How To Steps</div>
+            </div>
+        </section>
+
+        <section class="panel panel-10 panel-controls" data-panel="10" aria-hidden="true">
+            <div class="panel-content panel-10-app">
+                <div id="mainApp">
+                    <div class="container">
+                        <div class="stone_overlay stone_overlay_left"></div><div class="stone_overlay stone_overlay_right"></div>
+                        <div class="stones stone_left"></div><div class="stones stone_right"></div>
+                        <div class="elements elements_top"></div><div class="elements elements_bottom"></div>
+                    </div>
+                    <div class="battery_container">
+                        <div class="battery_display">
+                            <div class="battery_body"></div><div class="battery_glass"></div>
+                            <div class="battery_glass_glow" id="glowLayer"></div>
+                            <div class="battery_glass_glow_overlay"></div>
+                        </div>
+                    </div>
+
+                    <div class="control-panel">
+                        <h1>LANTERN CONTROL</h1>
+                        <div class="dashboard-section sec-system">
+                            <button id="connToggle" class="btn-connect">Connect</button>
+                            <select id="modeSelect" disabled>
+                                <option value="solid">Solid Color</option>
+                                <option value="fade">Breathing Fade</option>
+                                <option value="snake">Snake</option>
+                            </select>
+                        </div>
+
+                        <div class="dashboard-section sec-controls" id="controlsArea"></div>
+
+                        <div class="dashboard-section sec-actions">
+                            <button id="defaultBtn" disabled>Defaults</button>
+                            <div class="status" id="statusText">Ready</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script type="module" src="panels.js"></script>
+</body>
+</html>
