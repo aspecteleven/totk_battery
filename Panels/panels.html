@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zonai Lantern - Panels</title>
-    <!-- VERSION = "v0.12" -->
+    <!-- VERSION = "v0.13" -->
     <link rel="stylesheet" href="panels.css">
     <link rel="stylesheet" href="panel10_app.css">
 </head>
@@ -12,6 +12,18 @@
     <div id="canvas" aria-hidden="true">
         <div id="webgl-plane" class="webgl-plane"></div>
     </div>
+    <nav class="panel-jump" aria-label="Panel jump">
+        <button class="panel-jump-btn" data-panel-jump="1" type="button" aria-current="page">1</button>
+        <button class="panel-jump-btn" data-panel-jump="2" type="button">2</button>
+        <button class="panel-jump-btn" data-panel-jump="3" type="button">3</button>
+        <button class="panel-jump-btn" data-panel-jump="4" type="button">4</button>
+        <button class="panel-jump-btn" data-panel-jump="5" type="button">5</button>
+        <button class="panel-jump-btn" data-panel-jump="6" type="button">6</button>
+        <button class="panel-jump-btn" data-panel-jump="7" type="button">7</button>
+        <button class="panel-jump-btn" data-panel-jump="8" type="button">8</button>
+        <button class="panel-jump-btn" data-panel-jump="9" type="button">9</button>
+        <button class="panel-jump-btn" data-panel-jump="10" type="button">10</button>
+    </nav>
     <main class="panels" data-active="1">
         <section class="panel panel-1 panel-title is-active" data-panel="1" aria-hidden="false">
             <div class="panel-bg-wrapper">
@@ -73,7 +85,12 @@
             <div class="panel-bg-wrapper">
                 <img class="panel-bg" src="../images/panel4_enterShrine_bg.webp" data-sampler="panelTexture" alt="">
             </div>
-            <div class="panel-content"></div>
+            <div class="panel-content">
+                <div class="link-walk" aria-hidden="true">
+                    <img class="link-shadow" src="../images/link_back_shadow.png" alt="">
+                    <img class="link-body" src="../images/link_back.png" alt="">
+                </div>
+            </div>
         </section>
 
         <section class="panel panel-5 panel-arrival" data-panel="5" aria-hidden="true">

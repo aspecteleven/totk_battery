@@ -36,7 +36,7 @@ const panelRippleSettings = {
         maskSrc: "../images/panel1_vignette_alpha.png",
     },
     "6": {
-        speed: 0.4,
+        speed: 0.3,
         frequency: 36.0,
         amplitude: 0.007,
         edgeStart: 0.7,

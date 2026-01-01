@@ -1,4 +1,4 @@
-// VERSION = "v0.16"
+// VERSION = "v0.18"
 import { applyRippleSettings, initBackgrounds, triggerRippleTransition } from "./background-manager.js";
 import { initPanel10App } from "./panel10_app.js";
 
@@ -21,6 +21,18 @@ import { initPanel10App } from "./panel10_app.js";
             element.dataset.typewriterSource = element.innerHTML;
         }
     });
+
+    const panelJumpButtons = Array.from(document.querySelectorAll(".panel-jump-btn"));
+    const updatePanelJump = (panelId) => {
+        panelJumpButtons.forEach((button) => {
+            const isActive = button.dataset.panelJump === String(panelId);
+            if (isActive) {
+                button.setAttribute("aria-current", "page");
+            } else {
+                button.removeAttribute("aria-current");
+            }
+        });
+    };
 
     const setActivePanel = (panelId) => {
         const id = String(panelId);
@@ -45,6 +57,12 @@ import { initPanel10App } from "./panel10_app.js";
         state.activePanel = id;
         applyRippleSettings(id);
         runTypewriterForPanel(target);
+        updatePanelJump(id);
+        if (id === "4") {
+            startPanel4Sequence();
+        } else {
+            cancelPanel4Sequence();
+        }
     };
 
     const goToPanel = (panelId, duration = 1000) => {
@@ -79,6 +97,65 @@ import { initPanel10App } from "./panel10_app.js";
 
     const hasInteractiveContent = (panel) =>
         Boolean(panel.querySelector("button, a, input, select, textarea, [role=\"button\"]"));
+
+    const panel4 = container.querySelector(".panel-4");
+    const panel4Link = panel4 ? panel4.querySelector(".link-walk") : null;
+    let panel4SequenceId = 0;
+
+    const getPanel4Step = (index, style) => ({
+        x: style.getPropertyValue(`--link-step-${index}-x`).trim() || "50%",
+        y: style.getPropertyValue(`--link-step-${index}-y`).trim() || "70%",
+        scale: style.getPropertyValue(`--link-step-${index}-scale`).trim() || "1",
+    });
+
+    const applyPanel4Step = (step) => {
+        if (!panel4Link) return;
+        panel4Link.style.setProperty("--link-x", step.x);
+        panel4Link.style.setProperty("--link-y", step.y);
+        panel4Link.style.setProperty("--link-scale", step.scale);
+    };
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const cancelPanel4Sequence = () => {
+        panel4SequenceId += 1;
+    };
+
+    const startPanel4Sequence = async () => {
+        if (!panel4 || !panel4Link) return;
+        const sequenceId = ++panel4SequenceId;
+        const isActive = () => sequenceId === panel4SequenceId && panel4.classList.contains("is-active");
+        const panel4Style = getComputedStyle(panel4);
+        const steps = [
+            { ...getPanel4Step(1, panel4Style), hold: 1000 },
+            { ...getPanel4Step(2, panel4Style), hold: 1000 },
+            { ...getPanel4Step(3, panel4Style), hold: 1000 },
+            { ...getPanel4Step(4, panel4Style), hold: 1000 },
+        ];
+        const fadeDuration = 1050;
+
+        applyPanel4Step(steps[0]);
+        panel4Link.style.opacity = "1";
+        await delay(steps[0].hold);
+        for (let i = 1; i < steps.length; i += 1) {
+            if (!isActive()) return;
+            panel4Link.style.opacity = "0";
+            await delay(fadeDuration);
+            if (!isActive()) return;
+            applyPanel4Step(steps[i]);
+            panel4Link.style.opacity = "1";
+            await delay(fadeDuration + steps[i].hold);
+        }
+
+        if (!isActive()) return;
+        panel4Link.style.opacity = "0";
+        await delay(fadeDuration);
+        if (!isActive()) return;
+        const nextId = getNextPanelId("4");
+        if (nextId) {
+            goToPanel(nextId);
+        }
+    };
 
     const buildTypedNodes = (node, containerNode, chars) => {
         if (node.nodeType === Node.TEXT_NODE) {
@@ -218,6 +295,15 @@ import { initPanel10App } from "./panel10_app.js";
         });
     }
 
+    panelJumpButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            const target = button.dataset.panelJump;
+            if (target) {
+                goToPanel(target);
+            }
+        });
+    });
+
     const enterButtons = container.querySelectorAll(".enter-btn");
     enterButtons.forEach((button) => {
         button.addEventListener("click", (event) => {
@@ -277,6 +363,10 @@ import { initPanel10App } from "./panel10_app.js";
     const initialPanel = container.querySelector(".panel.is-active");
     if (initialPanel) {
         runTypewriterForPanel(initialPanel);
+        updatePanelJump(initialPanel.dataset.panel);
+        if (initialPanel.dataset.panel === "4") {
+            startPanel4Sequence();
+        }
     }
 
     window.setPanel = setActivePanel;
