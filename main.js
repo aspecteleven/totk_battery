@@ -140,6 +140,7 @@ let port, writer, reader, readableStreamClosed;
 let keepReading = false;
 let isConnected = false;
 let isOfflineMode = false;
+let controlsEnabled = false;
 let serialBuffer = "";
 
 // Default State (Placeholder)
@@ -404,8 +405,16 @@ function animate() {
 
     if(isConnected || isOfflineMode) { // Render if connected OR offline mode
         if(appState.mode === "solid") {
-            [r,g,b] = appState.solid_color; 
-            opacity = appState.solid_bright; 
+            const [sr, sg, sb] = appState.solid_color;
+            const maxVal = Math.max(sr, sg, sb);
+            if (maxVal === 0) {
+                r = 0; g = 0; b = 0; opacity = 0;
+            } else {
+                r = (sr / maxVal) * 255;
+                g = (sg / maxVal) * 255;
+                b = (sb / maxVal) * 255;
+                opacity = (maxVal / 255) * appState.solid_bright;
+            }
         } 
         else if(appState.mode === "fade") {
             let m = appState.fade_min + ((Math.sin(now*appState.fade_speed*3)+1)/2) * (appState.fade_max-appState.fade_min);

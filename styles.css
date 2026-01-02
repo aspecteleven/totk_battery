@@ -249,8 +249,8 @@ body {
 .elements_top { top: 0; background: url("images/elements_top.png"); }
 .elements_bottom { bottom: 0; background: url("images/elements_bottom.png"); opacity: .6; }
 
-.battery_container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; z-index: 20; pointer-events: none; }
-.battery_display { position: relative; width: 474px; height: 779px; }   
+.battery_container { position: absolute; top: 0; left: 0; width: 100%; height: 90%; display: flex; justify-content: center; align-items: center; z-index: 20; pointer-events: none; }
+.battery_display { transform: scale(.9); position: relative; width: 474px; height: 779px; }   
 .battery_body { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url("images/battery_body_dark.png") no-repeat; z-index: 21; }
 .battery_glass { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url("images/battery_glass.png") no-repeat; z-index: 22; }
 
@@ -278,7 +278,7 @@ body {
 /* --- DASHBOARD --- */
 .control-panel {
     position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-    width: 900px; max-width: 95vw; height: 140px;
+    min-width: 900px; max-width: 95vw; height: 140px;
     background: var(--panel-bg); border: 2px solid var(--accent-dim); border-radius: 16px;
     padding: 15px 25px; z-index: 100; backdrop-filter: blur(8px);
     box-shadow: 0 10px 40px rgba(0,0,0,0.6);
