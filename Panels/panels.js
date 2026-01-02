@@ -1,4 +1,4 @@
-// VERSION = "v0.18"
+// VERSION = "v0.31"
 import { applyRippleSettings, initBackgrounds, triggerRippleTransition } from "./background-manager.js";
 import { initPanel10App } from "./panel10_app.js";
 
@@ -19,6 +19,9 @@ import { initPanel10App } from "./panel10_app.js";
     typewriterElements.forEach((element) => {
         if (!element.dataset.typewriterSource) {
             element.dataset.typewriterSource = element.innerHTML;
+        }
+        if (!element.dataset.typewriterDefault) {
+            element.dataset.typewriterDefault = element.innerHTML;
         }
     });
 
@@ -56,12 +59,27 @@ import { initPanel10App } from "./panel10_app.js";
         container.setAttribute("data-active", id);
         state.activePanel = id;
         applyRippleSettings(id);
+        if (id === "8") {
+            resetPanel8();
+        }
         runTypewriterForPanel(target);
         updatePanelJump(id);
         if (id === "4") {
             startPanel4Sequence();
         } else {
             cancelPanel4Sequence();
+        }
+
+        if (id === "6") {
+            startPanel6Sequence();
+        } else {
+            cancelPanel6Sequence();
+        }
+
+        if (id === "7") {
+            startPanel7Sequence();
+        } else {
+            cancelPanel7Sequence();
         }
     };
 
@@ -106,6 +124,8 @@ import { initPanel10App } from "./panel10_app.js";
         x: style.getPropertyValue(`--link-step-${index}-x`).trim() || "50%",
         y: style.getPropertyValue(`--link-step-${index}-y`).trim() || "70%",
         scale: style.getPropertyValue(`--link-step-${index}-scale`).trim() || "1",
+        opacity: style.getPropertyValue(`--link-step-${index}-opacity`).trim() || "1",
+        blend: style.getPropertyValue(`--link-step-${index}-blend`).trim() || "normal",
     });
 
     const applyPanel4Step = (step) => {
@@ -113,6 +133,12 @@ import { initPanel10App } from "./panel10_app.js";
         panel4Link.style.setProperty("--link-x", step.x);
         panel4Link.style.setProperty("--link-y", step.y);
         panel4Link.style.setProperty("--link-scale", step.scale);
+        panel4Link.style.setProperty("--link-blend", step.blend);
+    };
+
+    const setLinkOpacity = (value) => {
+        if (!panel4Link) return;
+        panel4Link.style.setProperty("--link-opacity", value);
     };
 
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -135,25 +161,230 @@ import { initPanel10App } from "./panel10_app.js";
         const fadeDuration = 1050;
 
         applyPanel4Step(steps[0]);
-        panel4Link.style.opacity = "1";
+        setLinkOpacity(steps[0].opacity);
         await delay(steps[0].hold);
         for (let i = 1; i < steps.length; i += 1) {
             if (!isActive()) return;
-            panel4Link.style.opacity = "0";
+            setLinkOpacity("0");
             await delay(fadeDuration);
             if (!isActive()) return;
             applyPanel4Step(steps[i]);
-            panel4Link.style.opacity = "1";
+            setLinkOpacity(steps[i].opacity);
             await delay(fadeDuration + steps[i].hold);
         }
 
         if (!isActive()) return;
-        panel4Link.style.opacity = "0";
+        setLinkOpacity("0");
         await delay(fadeDuration);
         if (!isActive()) return;
         const nextId = getNextPanelId("4");
         if (nextId) {
             goToPanel(nextId);
+        }
+    };
+
+    const panel6 = container.querySelector(".panel-6");
+    const panel6Link = panel6 ? panel6.querySelector(".link-walk-6") : null;
+    const panel6Text = panel6 ? panel6.querySelector(".blessing-text") : null;
+    let panel6SequenceId = 0;
+
+    const getPanel6Step = (index, style) => ({
+        x: style.getPropertyValue(`--link6-step-${index}-x`).trim() || "50%",
+        y: style.getPropertyValue(`--link6-step-${index}-y`).trim() || "70%",
+        scale: style.getPropertyValue(`--link6-step-${index}-scale`).trim() || "1",
+        shadow: style.getPropertyValue(`--link6-step-${index}-shadow`).trim() || "0.65",
+    });
+
+    const applyPanel6Step = (step) => {
+        if (!panel6Link) return;
+        panel6Link.style.setProperty("--link6-x", step.x);
+        panel6Link.style.setProperty("--link6-y", step.y);
+        panel6Link.style.setProperty("--link6-scale", step.scale);
+        panel6Link.style.setProperty("--link6-shadow-opacity", step.shadow);
+    };
+
+    const setPanel6Opacity = (value) => {
+        if (!panel6Link) return;
+        panel6Link.style.setProperty("--link6-opacity", value);
+    };
+
+    const setBlessingTextState = (opacity, blur) => {
+        if (!panel6Text) return;
+        panel6Text.style.setProperty("--bless-opacity", opacity);
+        panel6Text.style.setProperty("--bless-blur", blur);
+    };
+
+    const cancelPanel6Sequence = () => {
+        panel6SequenceId += 1;
+    };
+
+    const startPanel6Sequence = async () => {
+        if (!panel6) return;
+        const sequenceId = ++panel6SequenceId;
+        const isActive = () => sequenceId === panel6SequenceId && panel6.classList.contains("is-active");
+        const panel6Style = getComputedStyle(panel6);
+        const steps = [
+            { ...getPanel6Step(1, panel6Style), hold: 1000 },
+            { ...getPanel6Step(2, panel6Style), hold: 1000 },
+            { ...getPanel6Step(3, panel6Style), hold: 1000 },
+            { ...getPanel6Step(4, panel6Style), hold: 1000 },
+        ];
+        const fadeDuration = 1050;
+        const textFadeDuration = 2000;
+        const textHoldDuration = 4500;
+        const walkDelay = 2000;
+
+        if (panel6Link) {
+            applyPanel6Step(steps[0]);
+            setPanel6Opacity("1");
+        }
+
+        if (panel6Text) {
+            setBlessingTextState("0", "12px");
+            await delay(1500);
+            if (!isActive()) return;
+            setBlessingTextState("1", "0px");
+            await delay(textFadeDuration + textHoldDuration);
+            if (!isActive()) return;
+            setBlessingTextState("0", "12px");
+            await delay(textFadeDuration + walkDelay);
+        } else {
+            await delay(walkDelay);
+        }
+
+        if (!panel6Link) return;
+
+        setPanel6Opacity("1");
+        await delay(steps[0].hold);
+        for (let i = 1; i < steps.length; i += 1) {
+            if (!isActive()) return;
+            setPanel6Opacity("0");
+            await delay(fadeDuration);
+            if (!isActive()) return;
+            applyPanel6Step(steps[i]);
+            setPanel6Opacity("1");
+            await delay(fadeDuration + steps[i].hold);
+        }
+
+        if (!isActive()) return;
+        await delay(2000);
+        if (!isActive()) return;
+        const nextId = getNextPanelId("6");
+        if (nextId) {
+            goToPanel(nextId);
+        }
+    };
+
+    const panel7 = container.querySelector(".panel-7");
+    const panel7Link = panel7 ? panel7.querySelector(".link-walk-7") : null;
+    const panel7Chest = panel7 ? panel7.querySelector(".chest") : null;
+    const panel7RewardPopup = panel7 ? panel7.querySelector(".reward-popup") : null;
+    const panel7ActionBtn = panel7 ? panel7.querySelector(".panel7-action-btn") : null;
+    const panel7ActionLabel = panel7 ? panel7.querySelector(".panel7-action-label") : null;
+    const panel7RewardBody = panel7 ? panel7.querySelector(".reward-body") : null;
+    let panel7SequenceId = 0;
+    let panel7Opened = false;
+    let panel7Completed = false;
+    let panel7PopupTimeout = null;
+
+    const getPanel7Step = (index, style) => ({
+        x: style.getPropertyValue(`--link7-step-${index}-x`).trim() || "50%",
+        y: style.getPropertyValue(`--link7-step-${index}-y`).trim() || "80%",
+        scale: style.getPropertyValue(`--link7-step-${index}-scale`).trim() || "0.22",
+        shadow: style.getPropertyValue(`--link7-step-${index}-shadow`).trim() || "0.6",
+    });
+
+    const applyPanel7Step = (step) => {
+        if (!panel7Link) return;
+        panel7Link.style.setProperty("--link7-x", step.x);
+        panel7Link.style.setProperty("--link7-y", step.y);
+        panel7Link.style.setProperty("--link7-scale", step.scale);
+        panel7Link.style.setProperty("--link7-shadow-opacity", step.shadow);
+    };
+
+    const setPanel7Opacity = (value) => {
+        if (!panel7Link) return;
+        panel7Link.style.setProperty("--link7-opacity", value);
+    };
+
+    const showPanel7Button = (label) => {
+        if (!panel7ActionBtn || !panel7ActionLabel) return;
+        panel7ActionLabel.textContent = label;
+        panel7ActionBtn.classList.remove("is-hidden");
+    };
+
+    const hidePanel7Button = () => {
+        if (!panel7ActionBtn) return;
+        panel7ActionBtn.classList.add("is-hidden");
+    };
+
+    const resetPanel7 = () => {
+        panel7Opened = false;
+        panel7Completed = false;
+        if (panel7PopupTimeout) {
+            clearTimeout(panel7PopupTimeout);
+            panel7PopupTimeout = null;
+        }
+        hidePanel7Button();
+        if (panel7Chest) {
+            panel7Chest.classList.remove("is-open");
+        }
+        if (panel7RewardPopup) {
+            panel7RewardPopup.classList.add("is-hidden");
+        }
+        if (panel7RewardBody) {
+            delete panel7RewardBody.dataset.typed;
+        }
+    };
+
+    const startPanel7Sequence = async () => {
+        if (!panel7) return;
+        const sequenceId = ++panel7SequenceId;
+        const isActive = () => sequenceId === panel7SequenceId && panel7.classList.contains("is-active");
+        const panel7Style = getComputedStyle(panel7);
+        const steps = [
+            { ...getPanel7Step(1, panel7Style), hold: 800 },
+            { ...getPanel7Step(2, panel7Style), hold: 800 },
+        ];
+        const fadeDuration = 700;
+
+        resetPanel7();
+        if (panel7Link) {
+            applyPanel7Step(steps[0]);
+            setPanel7Opacity("1");
+        }
+        await delay(steps[0].hold);
+        if (!isActive()) return;
+        if (panel7Link) {
+            setPanel7Opacity("0");
+            await delay(fadeDuration);
+            if (!isActive()) return;
+            applyPanel7Step(steps[1]);
+            setPanel7Opacity("1");
+        }
+        await delay(steps[1].hold);
+        if (!isActive()) return;
+        showPanel7Button("Open chest");
+    };
+
+    const cancelPanel7Sequence = () => {
+        panel7SequenceId += 1;
+    };
+
+    const panel8 = container.querySelector(".panel-8");
+    const panel8Body = panel8 ? panel8.querySelector(".dialog-body") : null;
+    const panel8Choices = panel8 ? Array.from(panel8.querySelectorAll(".panel8-choice-btn")) : [];
+    const panel8DefaultText = panel8Body?.dataset.typewriterDefault || "";
+    let panel8ChoiceLocked = false;
+
+    const resetPanel8 = () => {
+        panel8ChoiceLocked = false;
+        panel8Choices.forEach((button) => button.classList.add("is-hidden"));
+        if (panel8Body) {
+            if (panel8DefaultText) {
+                panel8Body.dataset.typewriterSource = panel8DefaultText;
+            }
+            delete panel8Body.dataset.typed;
         }
     };
 
@@ -196,8 +427,9 @@ import { initPanel10App } from "./panel10_app.js";
         Array.from(node.childNodes).forEach((child) => buildTypedNodes(child, clone, chars));
     };
 
-    const startTypewriter = (element) => {
+    const startTypewriter = (element, options = {}) => {
         if (!element || element.dataset.typed === "true") return;
+        const { onComplete } = options;
         const template = document.createElement("template");
         const source = element.dataset.typewriterSource || element.innerHTML;
         template.innerHTML = source.trim();
@@ -224,6 +456,9 @@ import { initPanel10App } from "./panel10_app.js";
             } else {
                 element.dataset.typed = "true";
                 panelButtons.forEach((button) => button.classList.remove("is-hidden"));
+                if (typeof onComplete === "function") {
+                    onComplete();
+                }
             }
         };
 
@@ -231,7 +466,8 @@ import { initPanel10App } from "./panel10_app.js";
     };
 
     const runTypewriterForPanel = (panel) => {
-        const targets = Array.from(panel.querySelectorAll("[data-typewriter=\"true\"]"));
+        const targets = Array.from(panel.querySelectorAll("[data-typewriter=\"true\"]"))
+            .filter((element) => element.dataset.typewriterAuto !== "false");
         targets.forEach(startTypewriter);
     };
 
@@ -270,9 +506,14 @@ import { initPanel10App } from "./panel10_app.js";
         namePopupOverlay.setAttribute("aria-hidden", "true");
     };
 
+    const toTitleCase = (value) =>
+        value
+            .toLowerCase()
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+
     const submitPanelName = () => {
         if (!namePopupInput) return;
-        const name = namePopupInput.value.trim();
+        const name = toTitleCase(namePopupInput.value.trim());
         if (!name) return;
         localStorage.setItem("zonai_user", name);
         closeNamePopup();
@@ -291,7 +532,7 @@ import { initPanel10App } from "./panel10_app.js";
     if (newGameButton) {
         newGameButton.addEventListener("click", () => {
             newGameButton.blur();
-            goToPanel(2);
+            goToPanel(3);
         });
     }
 
@@ -347,11 +588,79 @@ import { initPanel10App } from "./panel10_app.js";
         });
     }
 
+    if (panel7ActionBtn) {
+        panel7ActionBtn.addEventListener("click", (event) => {
+            event.preventDefault();
+            panel7ActionBtn.blur();
+            if (!panel7 || !panel7.classList.contains("is-active")) return;
+            if (!panel7Opened) {
+                panel7Opened = true;
+                hidePanel7Button();
+                if (panel7Chest) {
+                    panel7Chest.classList.add("is-open");
+                }
+                panel7PopupTimeout = setTimeout(() => {
+                    if (!panel7 || !panel7.classList.contains("is-active")) return;
+                    if (panel7RewardPopup) {
+                        panel7RewardPopup.classList.remove("is-hidden");
+                    }
+                    if (panel7RewardBody) {
+                        startTypewriter(panel7RewardBody, {
+                            onComplete: () => {
+                                panel7Completed = true;
+                                showPanel7Button("Complete shrine");
+                            },
+                        });
+                    } else {
+                        panel7Completed = true;
+                        showPanel7Button("Complete shrine");
+                    }
+                    panel7PopupTimeout = null;
+                }, 1500);
+                return;
+            }
+            if (panel7Completed) {
+                goToPanel(8);
+            }
+        });
+    }
+
+    panel8Choices.forEach((button) => {
+        button.addEventListener("click", (event) => {
+            event.preventDefault();
+            button.blur();
+            if (!panel8 || !panel8.classList.contains("is-active")) return;
+            if (panel8ChoiceLocked) return;
+            panel8ChoiceLocked = true;
+            panel8Choices.forEach((choice) => choice.classList.add("is-hidden"));
+            const choice = button.dataset.choice;
+            if (choice === "yes") {
+                goToPanel(10);
+                return;
+            }
+            if (panel8Body) {
+                panel8Body.dataset.typewriterSource =
+                    "Well, too bad for you, I'm going to anyway!";
+                delete panel8Body.dataset.typed;
+                startTypewriter(panel8Body, {
+                    onComplete: () => {
+                        if (panel8.classList.contains("is-active")) {
+                            goToPanel(10);
+                        }
+                    },
+                });
+            } else {
+                goToPanel(10);
+            }
+        });
+    });
+
     panels.forEach((panel) => {
         panel.addEventListener("click", (event) => {
             if (!panel.classList.contains("is-active")) return;
             if (event.target.closest("button, a, input, select, textarea, [role=\"button\"]")) return;
             if (hasInteractiveContent(panel)) return;
+            if (["4", "6"].includes(panel.dataset.panel)) return;
 
             const nextId = getNextPanelId(panel.dataset.panel);
             if (nextId) {
@@ -362,10 +671,19 @@ import { initPanel10App } from "./panel10_app.js";
 
     const initialPanel = container.querySelector(".panel.is-active");
     if (initialPanel) {
+        if (initialPanel.dataset.panel === "8") {
+            resetPanel8();
+        }
         runTypewriterForPanel(initialPanel);
         updatePanelJump(initialPanel.dataset.panel);
         if (initialPanel.dataset.panel === "4") {
             startPanel4Sequence();
+        }
+        if (initialPanel.dataset.panel === "6") {
+            startPanel6Sequence();
+        }
+        if (initialPanel.dataset.panel === "7") {
+            startPanel7Sequence();
         }
     }
 

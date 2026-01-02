@@ -1,4 +1,4 @@
-// VERSION = "v0.8"
+// VERSION = "v0.10"
 import { Curtains, Plane } from "https://cdn.jsdelivr.net/npm/curtainsjs@8.1.4/src/index.mjs";
 
 const defaultRippleSettings = {
@@ -27,14 +27,6 @@ const panelRippleSettings = {
         edgeEnd: 1.0,
         maskSrc: "../images/panel1_vignette_alpha.png",
     },
-    "5": {
-        speed: 0.4,
-        frequency: 36.0,
-        amplitude: 0.007,
-        edgeStart: 0.7,
-        edgeEnd: 1.0,
-        maskSrc: "../images/panel1_vignette_alpha.png",
-    },
     "6": {
         speed: 0.3,
         frequency: 36.0,
@@ -43,7 +35,6 @@ const panelRippleSettings = {
         edgeEnd: 1.0,
         maskSrc: "../images/panel1_vignette_alpha.png",
     },
-    "9": { amplitude: 0.0 },
     "10": { amplitude: 0.0 },
 };
 
