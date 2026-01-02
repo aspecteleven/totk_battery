@@ -52,7 +52,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f00;
+    background: #000;
     position: relative;
 }
 
@@ -66,6 +66,7 @@ body {
     z-index: 0;
     pointer-events: none;
     background: #000;
+    outline: 30px solid #fff;
 }
 
 .panels {
