@@ -52,6 +52,7 @@ Panels are consolidated into a single page for easier transitions and effects.
   - “New Game” clears the saved name and replays the storyboard.
     - Implement a pop-up for "New Game" when another "game" already exists (meaning the user has already entered their name previously). Replicate the pop=up from the index.html when asking about resetting)
   - “Continue” skips directly to Panel 10.
+- Panel 8: Don't display the buttons again after having selected yes or no.
 - Panel 10: add helper walkthrough modals with an “i” icon to replay, only auto-run on first visit.
 - Confirm whether `index.html`, `styles.css`, and `main.js` can be retired once Panel 10 fully replaces them.
 - Ensure all images use WEBP instead of PNG.

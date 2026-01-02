@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shrine Lantern Controller</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- RESET BUTTON (Intro Only) -->
+    <div id="resetUserBtn" title="Reset Name & Intro">↺</div>
+
+    <!-- DEMO MODE BUTTON (Main App Only) -->
+    <div id="offlineBtn" title="Demo / Offline Mode"></div>
+
+    <!-- INTRO SCREEN -->
+    <div id="introScreen">
+        <div class="intro-symbol"></div>
+        <div class="intro-text-area">
+            <div class="intro-prompt" id="introPrompt">Greetings, traveler! May I know your name?</div>
+            <div class="name-input-wrap">
+                <input type="text" id="nameInput" autocomplete="off" maxlength="15">
+                                <div class="intro-btn-wrap intro-btn-inline">
+                    <button class="intro-btn intro-btn-inline hidden" id="submitNameBtn" type="button" aria-label="Submit Name" title="Submit name">›</button>
+                    <span class="btn-fx btn-fx-before" aria-hidden="true"></span>
+                    <span class="btn-fx btn-fx-after" aria-hidden="true"></span>
+                </div>
+            </div>
+            <div class="intro-welcome" id="introWelcome"></div>
+        </div>
+                <div class="intro-btn-wrap">
+            <button class="intro-btn" id="continueBtn">Continue</button>
+            <span class="btn-fx btn-fx-before" aria-hidden="true"></span>
+            <span class="btn-fx btn-fx-after" aria-hidden="true"></span>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div id="mainApp">
+        <div class="container">
+            <div class="stone_overlay stone_overlay_left"></div><div class="stone_overlay stone_overlay_right"></div>
+            <div class="stones stone_left"></div><div class="stones stone_right"></div>
+            <div class="elements elements_top"></div><div class="elements elements_bottom"></div>
+        </div>
+        <div class="battery_container">
+            <div class="battery_display">
+                <div class="battery_body"></div><div class="battery_glass"></div>
+                <div class="battery_glass_glow" id="glowLayer"></div>
+                <div class="battery_glass_glow_overlay"></div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <h1>LANTERN CONTROL</h1>
+            <div class="dashboard-section sec-system">
+                <button id="connToggle" class="btn-connect">Connect</button>
+                <select id="modeSelect" disabled>
+                    <option value="solid">Solid Color</option>
+                    <option value="fade">Breathing Fade</option>
+                    <option value="snake">Snake</option>
+                </select>
+            </div>
+
+            <div class="dashboard-section sec-controls" id="controlsArea"></div>
+
+            <div class="dashboard-section sec-actions">
+                <button id="defaultBtn" disabled>Defaults</button>
+                <div class="status" id="statusText">Ready</div>
+            </div>
+        </div>
+        
+    </div>
+    <div class="version">HTML v2.19 | CSS v2.19 | JS v2.15</div>
+    <div id="resetModal" class="modal hidden" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+            <div class="modal-title" id="resetTitle">Reset User</div>
+            <div class="modal-body">Reset user name and show intro again?</div>
+            <div class="modal-actions">
+                <button class="modal-btn" id="resetCancel">Cancel</button>
+                <button class="modal-btn modal-btn-danger" id="resetConfirm">Reset</button>
+            </div>
+        </div>
+    </div>
+    <script src="main.js" defer></script>
+</body>
+</html>
