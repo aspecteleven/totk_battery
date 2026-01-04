@@ -25,6 +25,11 @@ intro.resetCancel.addEventListener('click', closeResetModal);
 intro.resetBackdrop.addEventListener('click', closeResetModal);
 intro.resetConfirm.addEventListener('click', () => {
     localStorage.removeItem('zonai_user');
+    localStorage.removeItem('coachmark_pending');
+    localStorage.removeItem('coachmark_step1');
+    localStorage.removeItem('coachmark_step2');
+    localStorage.removeItem('coachmark_step3');
+    localStorage.removeItem('coachmark_defaults');
     location.reload();
 });
 
@@ -65,12 +70,14 @@ intro.submitBtn.addEventListener('click', () => {
 function submitName() {
     const name = intro.input.value.trim();
     if(!name) return;
-    localStorage.setItem('zonai_user', name);
+    const formattedName = toTitleCase(name);
+    localStorage.setItem('zonai_user', formattedName);
+    localStorage.setItem('coachmark_pending', '1');
     intro.input.style.display = 'none';
     if (intro.inputWrap) intro.inputWrap.style.display = 'none';
     intro.prompt.style.display = 'none';
     setSubmitVisibility(false);
-    typeWriter(`Welcome, ${name}.<br>Enjoy your Zonai Lantern.`);
+    typeWriter(`Welcome, ${formattedName}.<br>Enjoy your Zonai Lantern.`);
 }
 
 function updateSubmitVisibility() {
@@ -132,6 +139,12 @@ intro.btn.addEventListener('click', () => {
     setTimeout(() => {
         intro.screen.style.display = 'none';
         intro.offlineBtn.style.display = 'block';
+        if (localStorage.getItem('coachmark_pending') === '1' && !coachmarkFlags.step1Shown) {
+            showCoachmark(coachmarks.connect, ui.connToggle);
+            coachmarkFlags.step1Shown = true;
+            localStorage.setItem('coachmark_step1', '1');
+            localStorage.removeItem('coachmark_pending');
+        }
     }, 2600);
 });
 
@@ -150,9 +163,9 @@ let serialBuffer = "";
 let appState = {
     mode: "solid",
     solid_color: [255, 230, 0], solid_bright: 0.8,
-    fade_color: [255, 200, 0], fade_color_2: [255, 220, 0], fade_use_2: true, fade_min: 0.1, fade_max: 0.9, fade_speed: 0.9,
+    fade_color: [255, 200, 0], fade_color_2: [0, 255, 179], fade_use_2: false, fade_min: 0.1, fade_max: 0.4, fade_speed: 0.5,
     snake_color_mode: "rainbow", snake_color_1: [255, 0, 0], snake_color_2: [0, 0, 255],
-    snake_single_color: [255, 0, 0], snake_grad_color_1: [255, 0, 0], snake_grad_color_2: [0, 0, 255],
+    snake_single_color: [255, 0, 0], snake_grad_color_1: [255, 0, 0], snake_grad_color_2: [255, 102, 0],
     snake_cw: true, snake_speed: 1.0
 };
 
@@ -164,6 +177,32 @@ const ui = {
     defaults: document.getElementById('defaultBtn'),
     glowLayer: document.getElementById('glowLayer'),
     offlineBtn: document.getElementById('offlineBtn')
+};
+
+const coachmarks = {
+    connect: {
+        root: document.getElementById('connectCoachmark'),
+        dialog: document.querySelector('#connectCoachmark .coachmark-dialog')
+    },
+    mode: {
+        root: document.getElementById('modeCoachmark'),
+        dialog: document.querySelector('#modeCoachmark .coachmark-dialog')
+    },
+    controls: {
+        root: document.getElementById('controlsCoachmark'),
+        dialog: document.querySelector('#controlsCoachmark .coachmark-dialog')
+    },
+    defaults: {
+        root: document.getElementById('defaultsCoachmark'),
+        dialog: document.querySelector('#defaultsCoachmark .coachmark-dialog')
+    }
+};
+
+const coachmarkFlags = {
+    step1Shown: localStorage.getItem('coachmark_step1') === '1',
+    step2Shown: localStorage.getItem('coachmark_step2') === '1',
+    step3Shown: localStorage.getItem('coachmark_step3') === '1',
+    defaultsShown: localStorage.getItem('coachmark_defaults') === '1'
 };
 
 // --- OFFLINE MODE HANDLER ---
@@ -182,6 +221,7 @@ ui.offlineBtn.addEventListener('click', () => {
 
 // --- USB HANDLING ---
 ui.connToggle.addEventListener('click', async () => {
+    hideCoachmark(coachmarks.connect);
     if (!isConnected) {
         // Connect Logic
         if (!navigator.serial) return alert("Use Chrome/Edge.");
@@ -206,6 +246,11 @@ ui.connToggle.addEventListener('click', async () => {
             
             enableControls('usb');
             readLoop(); 
+            if (!coachmarkFlags.step2Shown && coachmarkFlags.step1Shown) {
+                showCoachmark(coachmarks.mode, ui.modeSelect);
+                coachmarkFlags.step2Shown = true;
+                localStorage.setItem('coachmark_step2', '1');
+            }
             
             // Request State to sync UI
             setTimeout(() => { sendRaw({get_state: true}); }, 400);
@@ -233,9 +278,15 @@ ui.connToggle.addEventListener('click', async () => {
                 port = null;
             }
             isConnected = false;
+            hideCoachmark(coachmarks.controls);
+            hideCoachmark(coachmarks.defaults);
+            hideCoachmark(coachmarks.mode);
             enableControls('locked');
         } catch(e) {
             isConnected = false;
+            hideCoachmark(coachmarks.controls);
+            hideCoachmark(coachmarks.defaults);
+            hideCoachmark(coachmarks.mode);
             enableControls('locked');
         }
     }
@@ -319,7 +370,81 @@ function enableControls(state) {
     else ui.controls.innerHTML = "";
 }
 
+function showCoachmark(mark, targetEl) {
+    if (!mark.root || !targetEl) return;
+    mark.root.classList.remove('hidden');
+    mark.root.classList.add('active');
+    mark.root.setAttribute('aria-hidden', 'false');
+
+    setCoachmarkHole(mark, 0, 0, window.innerWidth, window.innerHeight);
+    positionCoachmark(mark, targetEl);
+    requestAnimationFrame(() => {
+        positionCoachmark(mark, targetEl);
+    });
+}
+
+function hideCoachmark(mark) {
+    if (!mark.root || mark.root.classList.contains('hidden')) return;
+    mark.root.classList.remove('active');
+    setCoachmarkHole(mark, 0, 0, window.innerWidth, window.innerHeight);
+    setTimeout(() => {
+        mark.root.classList.add('hidden');
+        mark.root.setAttribute('aria-hidden', 'true');
+    }, 650);
+}
+
+function setCoachmarkHole(mark, left, top, right, bottom) {
+    mark.root.style.setProperty('--hole-left', `${left}px`);
+    mark.root.style.setProperty('--hole-top', `${top}px`);
+    mark.root.style.setProperty('--hole-right', `${right}px`);
+    mark.root.style.setProperty('--hole-bottom', `${bottom}px`);
+}
+
+function positionCoachmark(mark, targetEl) {
+    if (!mark.root || mark.root.classList.contains('hidden')) return;
+    const rect = targetEl.getBoundingClientRect();
+    const padX = 16;
+    const padY = 12;
+    const left = Math.max(0, rect.left - padX);
+    const top = Math.max(0, rect.top - padY);
+    const right = Math.min(window.innerWidth, rect.right + padX);
+    const bottom = Math.min(window.innerHeight, rect.bottom + padY);
+    setCoachmarkHole(mark, left, top, right, bottom);
+
+    const dialog = mark.dialog;
+    if (!dialog) return;
+    dialog.style.left = "0px";
+    dialog.style.top = "0px";
+    const dRect = dialog.getBoundingClientRect();
+    let dLeft = rect.right + 20;
+    let dTop = rect.top - 6;
+    if (dLeft + dRect.width > window.innerWidth - 20) dLeft = rect.left - dRect.width - 20;
+    if (dTop + dRect.height > window.innerHeight - 20) dTop = window.innerHeight - dRect.height - 20;
+    if (dTop < 20) dTop = 20;
+    dialog.style.left = `${dLeft}px`;
+    dialog.style.top = `${dTop}px`;
+
+}
+
+window.addEventListener('resize', () => {
+    Object.values(coachmarks).forEach((mark) => {
+        if (mark.root && !mark.root.classList.contains('hidden')) {
+            let target = ui.modeSelect;
+            if (mark.root.id === 'connectCoachmark') target = ui.connToggle;
+            else if (mark.root.id === 'controlsCoachmark') target = ui.controls;
+            else if (mark.root.id === 'defaultsCoachmark') target = ui.defaults;
+            if (target) positionCoachmark(mark, target);
+        }
+    });
+});
+
 ui.modeSelect.addEventListener('change', () => {
+    hideCoachmark(coachmarks.mode);
+    if (!coachmarkFlags.step3Shown && coachmarkFlags.step1Shown) {
+        showCoachmark(coachmarks.controls, ui.controls);
+        coachmarkFlags.step3Shown = true;
+        localStorage.setItem('coachmark_step3', '1');
+    }
     appState.mode = ui.modeSelect.value; drawControls(); sendData(true);
 });
 
@@ -351,6 +476,28 @@ function drawControls() {
         createSlider("Speed", "snake_speed", 0.1, 3.0, 0.1);
     }
 }
+
+ui.controls.addEventListener('input', () => {
+    if (coachmarks.controls && !coachmarks.controls.root.classList.contains('hidden')) {
+        hideCoachmark(coachmarks.controls);
+        if (!coachmarkFlags.defaultsShown && coachmarkFlags.step1Shown) {
+            showCoachmark(coachmarks.defaults, ui.defaults);
+            coachmarkFlags.defaultsShown = true;
+            localStorage.setItem('coachmark_defaults', '1');
+        }
+    }
+});
+
+ui.controls.addEventListener('change', () => {
+    if (coachmarks.controls && !coachmarks.controls.root.classList.contains('hidden')) {
+        hideCoachmark(coachmarks.controls);
+        if (!coachmarkFlags.defaultsShown && coachmarkFlags.step1Shown) {
+            showCoachmark(coachmarks.defaults, ui.defaults);
+            coachmarkFlags.defaultsShown = true;
+            localStorage.setItem('coachmark_defaults', '1');
+        }
+    }
+});
 
 // --- WIDGETS ---
 function createColorInput(label, key) {
@@ -425,6 +572,7 @@ function initSliderLogic(container, thumb, highlight, min, max, step, callback) 
         let x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
         let v = min + (x / rect.width) * (max - min); v = Math.max(min, Math.min(max, v)); v = Math.round(v / step) * step; v = parseFloat(v.toFixed(2));
         const p = (v - min) / (max - min) * 100; thumb.style.left = `calc(${p}% - 10px)`; highlight.style.width = `${p}%`; callback(v); sendData(false);
+        handleControlsInteraction();
     }
     thumb.addEventListener('mousedown', (e) => { const move = (ev) => drag(ev); const stop = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', stop); sendData(true); }; document.addEventListener('mousemove', move); document.addEventListener('mouseup', stop); });
     container.addEventListener('mousedown', (e) => { if(e.target===thumb)return; drag(e); sendData(true); });
@@ -443,6 +591,14 @@ function syncSnakeDeviceColors() {
 function rgbToHex(rgb) { return "#" + ((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1); }
 function hexToRgb(hex) { const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16); return [r,g,b]; }
 function formatVal(v, isP) { return isP ? Math.round(v*100)+"%" : v+"x"; }
+function toTitleCase(name) {
+    return name
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+}
 
 // --- VISUALIZER ---
 function animate() {
@@ -549,12 +705,13 @@ function animate() {
 requestAnimationFrame(animate);
 
 ui.defaults.addEventListener('click', () => {
+     hideCoachmark(coachmarks.defaults);
      appState = {
         mode: "solid",
         solid_color: [255, 230, 0], solid_bright: 0.8,
-        fade_color: [255, 200, 0], fade_color_2: [255, 220, 0], fade_use_2: true, fade_min: 0.1, fade_max: 0.9, fade_speed: 0.9,
+        fade_color: [255, 200, 0], fade_color_2: [0, 255, 179], fade_use_2: false, fade_min: 0.1, fade_max: 0.8, fade_speed: 0.5,
         snake_color_mode: "rainbow", snake_color_1: [255, 0, 0], snake_color_2: [0, 0, 255],
-        snake_single_color: [255, 0, 0], snake_grad_color_1: [255, 0, 0], snake_grad_color_2: [0, 0, 255],
+        snake_single_color: [255, 0, 0], snake_grad_color_1: [255, 0, 0], snake_grad_color_2: [255, 102, 0],
         snake_cw: true, snake_speed: 1.0
      };
      ui.modeSelect.value = "solid";
