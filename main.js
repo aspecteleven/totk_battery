@@ -3,6 +3,7 @@ const intro = {
     screen: document.getElementById('introScreen'),
     prompt: document.getElementById('introPrompt'),
     input: document.getElementById('nameInput'),
+    inputWrap: document.querySelector('.name-input-wrap'),
     welcome: document.getElementById('introWelcome'),
     btn: document.getElementById('continueBtn'),
     main: document.getElementById('mainApp'),
@@ -42,6 +43,7 @@ function initIntro() {
     if (savedName) {
         intro.prompt.style.display = 'none';
         intro.input.style.display = 'none';
+        if (intro.inputWrap) intro.inputWrap.style.display = 'none';
         setSubmitVisibility(false);
         setTimeout(() => {
             typeWriter(`Welcome back, ${savedName}.<br>The Shrine awaits.`);
@@ -65,6 +67,7 @@ function submitName() {
     if(!name) return;
     localStorage.setItem('zonai_user', name);
     intro.input.style.display = 'none';
+    if (intro.inputWrap) intro.inputWrap.style.display = 'none';
     intro.prompt.style.display = 'none';
     setSubmitVisibility(false);
     typeWriter(`Welcome, ${name}.<br>Enjoy your Zonai Lantern.`);
@@ -148,7 +151,9 @@ let appState = {
     mode: "solid",
     solid_color: [255, 230, 0], solid_bright: 0.8,
     fade_color: [255, 200, 0], fade_color_2: [255, 220, 0], fade_use_2: true, fade_min: 0.1, fade_max: 0.9, fade_speed: 0.9,
-    snake_color_mode: "rainbow", snake_color_1: [255, 0, 0], snake_color_2: [0, 0, 255], snake_cw: true, snake_speed: 1.0
+    snake_color_mode: "rainbow", snake_color_1: [255, 0, 0], snake_color_2: [0, 0, 255],
+    snake_single_color: [255, 0, 0], snake_grad_color_1: [255, 0, 0], snake_grad_color_2: [0, 0, 255],
+    snake_cw: true, snake_speed: 1.0
 };
 
 const ui = {
@@ -259,6 +264,14 @@ function parseJSON(text) {
             let jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}')+1);
             let d = JSON.parse(jsonStr);
             Object.assign(appState, d);
+            if (appState.mode === "snake") {
+                if (appState.snake_color_mode === "single") {
+                    appState.snake_single_color = [...appState.snake_color_1];
+                } else if (appState.snake_color_mode === "gradient") {
+                    appState.snake_grad_color_1 = [...appState.snake_color_1];
+                    appState.snake_grad_color_2 = [...appState.snake_color_2];
+                }
+            }
             // Force UI Update on sync
             if(ui.modeSelect.value !== appState.mode) ui.modeSelect.value = appState.mode;
             if(isConnected) drawControls(); 
@@ -326,9 +339,14 @@ function drawControls() {
         createSlider("Speed", "fade_speed", 0.1, 3.0, 0.1);
     }
     else if (m === "snake") {
+        syncSnakeDeviceColors();
         createDropdown("Type", "snake_color_mode", {"single": "Single", "rainbow": "Rainbow", "gradient": "Gradient"});
-        if(appState.snake_color_mode !== 'rainbow') createColorInput("Color 1", "snake_color_1");
-        if(appState.snake_color_mode === 'gradient') createColorInput("Color 2", "snake_color_2");
+        if(appState.snake_color_mode === 'single') {
+            createSnakeColorInput("Color 1", "snake_single_color", "snake_color_1");
+        } else if(appState.snake_color_mode === 'gradient') {
+            createSnakeColorInput("Color 1", "snake_grad_color_1", "snake_color_1");
+            createSnakeColorInput("Color 2", "snake_grad_color_2", "snake_color_2");
+        }
         createCheckbox("Clockwise", "snake_cw");
         createSlider("Speed", "snake_speed", 0.1, 3.0, 0.1);
     }
@@ -342,6 +360,20 @@ function createColorInput(label, key) {
     div.querySelector('input').addEventListener('change', (e) => { appState[key] = hexToRgb(e.target.value); if(key==='snake_color_mode') drawControls(); sendData(true); });
     ui.controls.appendChild(div);
 }
+function createSnakeColorInput(label, storeKey, deviceKey) {
+    const div = document.createElement('div'); div.className = 'control-group';
+    div.innerHTML = `<label>${label}</label><input type="color" value="${rgbToHex(appState[storeKey])}">`;
+    const input = div.querySelector('input');
+    const update = (hex, save) => {
+        const rgb = hexToRgb(hex);
+        appState[storeKey] = rgb;
+        appState[deviceKey] = rgb;
+        sendData(save);
+    };
+    input.addEventListener('input', (e) => { update(e.target.value, false); });
+    input.addEventListener('change', (e) => { update(e.target.value, true); });
+    ui.controls.appendChild(div);
+}
 function createCheckbox(label, key) {
     const div = document.createElement('div'); div.className = 'control-group';
     div.innerHTML = `<label>${label} <input type="checkbox" ${appState[key] ? 'checked' : ''}></label>`;
@@ -352,7 +384,12 @@ function createDropdown(label, key, options) {
     const div = document.createElement('div'); div.className = 'control-group';
     let opts = ""; for(let k in options) opts += `<option value="${k}" ${appState[key] == k ? 'selected' : ''}>${options[k]}</option>`;
     div.innerHTML = `<label>${label}</label><select>${opts}</select>`;
-    div.querySelector('select').addEventListener('change', (e) => { appState[key] = isNaN(e.target.value) ? e.target.value : parseInt(e.target.value); drawControls(); sendData(true); });
+    div.querySelector('select').addEventListener('change', (e) => { 
+        appState[key] = isNaN(e.target.value) ? e.target.value : parseInt(e.target.value);
+        if (key === "snake_color_mode") syncSnakeDeviceColors();
+        drawControls();
+        sendData(true);
+    });
     ui.controls.appendChild(div);
 }
 function createSlider(label, key, min, max, step, showPercent=false) {
@@ -391,6 +428,15 @@ function initSliderLogic(container, thumb, highlight, min, max, step, callback) 
     }
     thumb.addEventListener('mousedown', (e) => { const move = (ev) => drag(ev); const stop = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', stop); sendData(true); }; document.addEventListener('mousemove', move); document.addEventListener('mouseup', stop); });
     container.addEventListener('mousedown', (e) => { if(e.target===thumb)return; drag(e); sendData(true); });
+}
+
+function syncSnakeDeviceColors() {
+    if (appState.snake_color_mode === "single") {
+        appState.snake_color_1 = [...appState.snake_single_color];
+    } else if (appState.snake_color_mode === "gradient") {
+        appState.snake_color_1 = [...appState.snake_grad_color_1];
+        appState.snake_color_2 = [...appState.snake_grad_color_2];
+    }
 }
 
 // --- HELPERS ---
@@ -436,25 +482,64 @@ function animate() {
     document.documentElement.style.setProperty('--glow-opacity', opacity);
 
     if((isConnected || isOfflineMode) && appState.mode === "snake") {
-        document.documentElement.style.setProperty('--glow-opacity', 0.2); 
-        let grad = "";
-        if(appState.snake_color_mode === 'single') {
-            let c = rgbToHex(appState.snake_color_1);
-            document.documentElement.style.setProperty('--glow-rgb', `${appState.snake_color_1.join(',')}`); 
-            grad = `linear-gradient(90deg, transparent 0%, ${c} 50%, transparent 100%)`;
-        } else if (appState.snake_color_mode === 'gradient') {
-            let c1 = rgbToHex(appState.snake_color_1);
-            let c2 = rgbToHex(appState.snake_color_2);
-            grad = `linear-gradient(90deg, transparent 0%, ${c1} 40%, ${c2} 60%, transparent 100%)`;
+        const SNAKE_BASE_OPACITY = 0.8;
+        const normalizeColor = (rgb) => {
+            const m = Math.max(rgb[0], rgb[1], rgb[2]);
+            if (m === 0) return [0, 0, 0];
+            return [
+                Math.round((rgb[0] / m) * 255),
+                Math.round((rgb[1] / m) * 255),
+                Math.round((rgb[2] / m) * 255)
+            ];
+        };
+        const toSnakeColor = (rgb) => {
+            const n = normalizeColor(rgb);
+            const a = (Math.max(rgb[0], rgb[1], rgb[2]) / 255) * SNAKE_BASE_OPACITY;
+            return { n, a, rgba: `rgba(${n[0]}, ${n[1]}, ${n[2]}, ${a})` };
+        };
+
+        const snakeColors = appState.snake_color_mode === 'single'
+            ? [appState.snake_color_1]
+            : appState.snake_color_mode === 'gradient'
+                ? [appState.snake_color_1, appState.snake_color_2]
+                : null;
+        const maxVal = snakeColors ? Math.max(...snakeColors.flat()) : 255;
+
+        if (maxVal === 0) {
+            document.documentElement.style.setProperty('--glow-opacity', 0);
+            ui.glowLayer.style.background = "radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 100%)";
+            ui.glowLayer.style.backgroundSize = "";
+            ui.glowLayer.style.backgroundPosition = "";
         } else {
-            grad = `linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet, red)`;
+            let grad = "";
+            if(appState.snake_color_mode === 'single') {
+                const c1 = toSnakeColor(appState.snake_color_1);
+                document.documentElement.style.setProperty('--glow-rgb', `${c1.n.join(',')}`);
+                document.documentElement.style.setProperty('--glow-opacity', c1.a);
+                grad = `linear-gradient(90deg, transparent 0%, ${c1.rgba} 50%, transparent 100%)`;
+            } else if (appState.snake_color_mode === 'gradient') {
+                const c1 = toSnakeColor(appState.snake_color_1);
+                const c2 = toSnakeColor(appState.snake_color_2);
+                const avg = [
+                    Math.round((c1.n[0] + c2.n[0]) / 2),
+                    Math.round((c1.n[1] + c2.n[1]) / 2),
+                    Math.round((c1.n[2] + c2.n[2]) / 2)
+                ];
+                document.documentElement.style.setProperty('--glow-rgb', `${avg.join(',')}`);
+                document.documentElement.style.setProperty('--glow-opacity', Math.max(c1.a, c2.a));
+                grad = `linear-gradient(90deg, transparent 0%, ${c1.rgba} 40%, ${c2.rgba} 60%, transparent 100%)`;
+            } else {
+                document.documentElement.style.setProperty('--glow-rgb', `255, 255, 255`);
+                document.documentElement.style.setProperty('--glow-opacity', SNAKE_BASE_OPACITY);
+                grad = `linear-gradient(90deg, rgba(255, 0, 0, ${SNAKE_BASE_OPACITY}), rgba(255, 165, 0, ${SNAKE_BASE_OPACITY}), rgba(255, 255, 0, ${SNAKE_BASE_OPACITY}), rgba(0, 128, 0, ${SNAKE_BASE_OPACITY}), rgba(0, 0, 255, ${SNAKE_BASE_OPACITY}), rgba(75, 0, 130, ${SNAKE_BASE_OPACITY}), rgba(238, 130, 238, ${SNAKE_BASE_OPACITY}), rgba(255, 0, 0, ${SNAKE_BASE_OPACITY}))`;
+            }
+            ui.glowLayer.style.background = grad;
+            ui.glowLayer.style.backgroundSize = "200% 100%"; 
+            let speed = appState.snake_speed * 50; 
+            let offset = (now * speed) % 200;
+            if(!appState.snake_cw) offset = -offset;
+            ui.glowLayer.style.backgroundPosition = `${offset}% 0%`;
         }
-        ui.glowLayer.style.background = grad;
-        ui.glowLayer.style.backgroundSize = "200% 100%"; 
-        let speed = appState.snake_speed * 50; 
-        let offset = (now * speed) % 200;
-        if(!appState.snake_cw) offset = -offset;
-        ui.glowLayer.style.backgroundPosition = `${offset}% 0%`;
     } else {
         ui.glowLayer.style.background = `radial-gradient(circle, rgba(var(--glow-rgb), var(--glow-opacity)) 0%, rgba(var(--glow-rgb), var(--glow-opacity)) 100%)`;
         ui.glowLayer.style.backgroundSize = ""; ui.glowLayer.style.backgroundPosition = "";
@@ -468,7 +553,9 @@ ui.defaults.addEventListener('click', () => {
         mode: "solid",
         solid_color: [255, 230, 0], solid_bright: 0.8,
         fade_color: [255, 200, 0], fade_color_2: [255, 220, 0], fade_use_2: true, fade_min: 0.1, fade_max: 0.9, fade_speed: 0.9,
-        snake_color_mode: "rainbow", snake_color_1: [255, 0, 0], snake_color_2: [0, 0, 255], snake_cw: true, snake_speed: 1.0
+        snake_color_mode: "rainbow", snake_color_1: [255, 0, 0], snake_color_2: [0, 0, 255],
+        snake_single_color: [255, 0, 0], snake_grad_color_1: [255, 0, 0], snake_grad_color_2: [0, 0, 255],
+        snake_cw: true, snake_speed: 1.0
      };
      ui.modeSelect.value = "solid";
      drawControls();

@@ -23,8 +23,8 @@ state = {
     # Solid
     "solid_color": [255, 230, 0], "solid_bright": 0.8,
     # Fade
-    "fade_color": [255, 200, 0], "fade_color_2": [255, 220, 0], "fade_use_2": True,
-    "fade_min": 0.1, "fade_max": 0.9, "fade_speed": 0.9,
+    "fade_color": [0, 255, 179], "fade_color_2": [255, 220, 0], "fade_use_2": True,
+    "fade_min": 0.1, "fade_max": 0.9, "fade_speed": 0.5,
     # Snake
     "snake_color_mode": "rainbow", # single, rainbow, gradient
     "snake_color_1": [255, 0, 0], "snake_color_2": [0, 0, 255],
