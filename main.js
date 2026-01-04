@@ -46,12 +46,14 @@ function closeResetModal() {
 function initIntro() {
     const savedName = localStorage.getItem('zonai_user');
     if (savedName) {
+        const formattedName = toTitleCase(savedName);
+        if (formattedName !== savedName) localStorage.setItem('zonai_user', formattedName);
         intro.prompt.style.display = 'none';
         intro.input.style.display = 'none';
         if (intro.inputWrap) intro.inputWrap.style.display = 'none';
         setSubmitVisibility(false);
         setTimeout(() => {
-            typeWriter(`Welcome back, ${savedName}.<br>The Shrine awaits.`);
+            typeWriter(`Welcome back, ${formattedName}.<br>The Shrine awaits.`);
         }, 500);
     } else {
         intro.input.focus();
@@ -426,6 +428,17 @@ function positionCoachmark(mark, targetEl) {
 
 }
 
+function handleControlsInteraction() {
+    if (coachmarks.controls && !coachmarks.controls.root.classList.contains('hidden')) {
+        hideCoachmark(coachmarks.controls);
+        if (!coachmarkFlags.defaultsShown && coachmarkFlags.step1Shown) {
+            showCoachmark(coachmarks.defaults, ui.defaults);
+            coachmarkFlags.defaultsShown = true;
+            localStorage.setItem('coachmark_defaults', '1');
+        }
+    }
+}
+
 window.addEventListener('resize', () => {
     Object.values(coachmarks).forEach((mark) => {
         if (mark.root && !mark.root.classList.contains('hidden')) {
@@ -478,25 +491,11 @@ function drawControls() {
 }
 
 ui.controls.addEventListener('input', () => {
-    if (coachmarks.controls && !coachmarks.controls.root.classList.contains('hidden')) {
-        hideCoachmark(coachmarks.controls);
-        if (!coachmarkFlags.defaultsShown && coachmarkFlags.step1Shown) {
-            showCoachmark(coachmarks.defaults, ui.defaults);
-            coachmarkFlags.defaultsShown = true;
-            localStorage.setItem('coachmark_defaults', '1');
-        }
-    }
+    handleControlsInteraction();
 });
 
 ui.controls.addEventListener('change', () => {
-    if (coachmarks.controls && !coachmarks.controls.root.classList.contains('hidden')) {
-        hideCoachmark(coachmarks.controls);
-        if (!coachmarkFlags.defaultsShown && coachmarkFlags.step1Shown) {
-            showCoachmark(coachmarks.defaults, ui.defaults);
-            coachmarkFlags.defaultsShown = true;
-            localStorage.setItem('coachmark_defaults', '1');
-        }
-    }
+    handleControlsInteraction();
 });
 
 // --- WIDGETS ---
@@ -572,7 +571,7 @@ function initSliderLogic(container, thumb, highlight, min, max, step, callback) 
         let x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
         let v = min + (x / rect.width) * (max - min); v = Math.max(min, Math.min(max, v)); v = Math.round(v / step) * step; v = parseFloat(v.toFixed(2));
         const p = (v - min) / (max - min) * 100; thumb.style.left = `calc(${p}% - 10px)`; highlight.style.width = `${p}%`; callback(v); sendData(false);
-        handleControlsInteraction();
+        if (typeof handleControlsInteraction === 'function') handleControlsInteraction();
     }
     thumb.addEventListener('mousedown', (e) => { const move = (ev) => drag(ev); const stop = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', stop); sendData(true); }; document.addEventListener('mousemove', move); document.addEventListener('mouseup', stop); });
     container.addEventListener('mousedown', (e) => { if(e.target===thumb)return; drag(e); sendData(true); });
