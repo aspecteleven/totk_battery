@@ -140,7 +140,7 @@ intro.btn.addEventListener('click', () => {
     // Show Demo Button after intro
     setTimeout(() => {
         intro.screen.style.display = 'none';
-        intro.offlineBtn.style.display = 'block';
+        intro.offlineBtn.style.display = 'none';
         if (localStorage.getItem('coachmark_pending') === '1' && !coachmarkFlags.step1Shown) {
             showCoachmark(coachmarks.connect, ui.connToggle);
             coachmarkFlags.step1Shown = true;
