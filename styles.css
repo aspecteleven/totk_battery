@@ -473,5 +473,5 @@ input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent);
 }
 
 .hidden { display: none !important; }
-.version { position: fixed; bottom: 5px; right: 10px; color: rgba(255,255,255,0.01); font-size: 10px; pointer-events: none; z-index: 9999; }
+.version { position: fixed; bottom: 5px; right: 10px; color: rgba(255,255,255,0.01); font-size: 10px; z-index: 9999; }
 .version:hover { color: rgba(255,255,255,0.3); }  
