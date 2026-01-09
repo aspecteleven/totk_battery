@@ -26,10 +26,13 @@ intro.resetBackdrop.addEventListener('click', closeResetModal);
 intro.resetConfirm.addEventListener('click', () => {
     localStorage.removeItem('zonai_user');
     localStorage.removeItem('coachmark_pending');
+    localStorage.removeItem('coachmark_first_run');
+    localStorage.removeItem('coachmark_suspended');
     localStorage.removeItem('coachmark_step1');
     localStorage.removeItem('coachmark_step2');
     localStorage.removeItem('coachmark_step3');
     localStorage.removeItem('coachmark_defaults');
+    localStorage.removeItem('coachmark_info');
     location.reload();
 });
 
@@ -86,6 +89,8 @@ function submitName() {
     if(!name) return;
     const formattedName = toTitleCase(name);
     localStorage.setItem('zonai_user', formattedName);
+    localStorage.setItem('coachmark_first_run', '1');
+    localStorage.removeItem('coachmark_suspended');
     localStorage.setItem('coachmark_pending', '1');
     intro.input.style.display = 'none';
     if (intro.inputWrap) intro.inputWrap.style.display = 'none';
@@ -172,7 +177,8 @@ intro.btn.addEventListener('click', () => {
     // Show Demo Button after intro
     setTimeout(() => {
         intro.screen.style.display = 'none';
-        intro.offlineBtn.style.display = 'none';
+        intro.offlineBtn.style.display = 'block';
+        if (ui.infoBtn) ui.infoBtn.style.display = 'flex';
         if (localStorage.getItem('coachmark_pending') === '1' && !coachmarkFlags.step1Shown) {
             showCoachmark(coachmarks.connect, ui.connToggle);
             coachmarkFlags.step1Shown = true;
@@ -186,9 +192,10 @@ initIntro();
 
 
 // --- MAIN CONTROLLER LOGIC ---
-let port, writer, reader, readableStreamClosed;
+let port, writer, reader, readableStreamClosed, writableStreamClosed;
 let keepReading = false;
 let isConnected = false;
+let isConnecting = false;
 let isOfflineMode = false;
 let controlsEnabled = false;
 let serialBuffer = "";
@@ -210,7 +217,8 @@ const ui = {
     status: document.getElementById('statusText'),
     defaults: document.getElementById('defaultBtn'),
     glowLayer: document.getElementById('glowLayer'),
-    offlineBtn: document.getElementById('offlineBtn')
+    offlineBtn: document.getElementById('offlineBtn'),
+    infoBtn: document.getElementById('infoBtn')
 };
 
 const coachmarks = {
@@ -229,6 +237,10 @@ const coachmarks = {
     defaults: {
         root: document.getElementById('defaultsCoachmark'),
         dialog: document.querySelector('#defaultsCoachmark .coachmark-dialog')
+    },
+    info: {
+        root: document.getElementById('infoCoachmark'),
+        dialog: document.querySelector('#infoCoachmark .coachmark-dialog')
     }
 };
 
@@ -236,7 +248,8 @@ const coachmarkFlags = {
     step1Shown: localStorage.getItem('coachmark_step1') === '1',
     step2Shown: localStorage.getItem('coachmark_step2') === '1',
     step3Shown: localStorage.getItem('coachmark_step3') === '1',
-    defaultsShown: localStorage.getItem('coachmark_defaults') === '1'
+    defaultsShown: localStorage.getItem('coachmark_defaults') === '1',
+    infoShown: localStorage.getItem('coachmark_info') === '1'
 };
 
 // --- OFFLINE MODE HANDLER ---
@@ -254,21 +267,52 @@ ui.offlineBtn.addEventListener('click', () => {
 });
 
 // --- USB HANDLING ---
+async function closeSerial() {
+    keepReading = false;
+    if (reader) {
+        try { await reader.cancel(); } catch (e) {}
+        try { await readableStreamClosed?.catch(() => {}); } catch (e) {}
+        reader = null;
+    }
+    if (writer) {
+        try { await writer.close(); } catch (e) {}
+        writer = null;
+    }
+    if (writableStreamClosed) {
+        try { await writableStreamClosed.catch(() => {}); } catch (e) {}
+        writableStreamClosed = null;
+    }
+    if (port) {
+        try {
+            if (port.readable || port.writable) await port.close();
+        } catch (e) {}
+        port = null;
+    }
+    readableStreamClosed = null;
+}
+
 ui.connToggle.addEventListener('click', async () => {
-    hideCoachmark(coachmarks.connect);
     if (!isConnected) {
         // Connect Logic
         if (!navigator.serial) return alert("Use Chrome/Edge.");
+        if (isConnecting) return;
+        isConnecting = true;
         try {
+            await closeSerial();
             // Turn off offline mode if active
             isOfflineMode = false;
             ui.offlineBtn.classList.remove('active');
 
-            port = await navigator.serial.requestPort();
-            await port.open({ baudRate: 115200 });
+            const selectedPort = await navigator.serial.requestPort();
+            if (selectedPort.readable || selectedPort.writable) {
+                port = selectedPort;
+            } else {
+                await selectedPort.open({ baudRate: 115200 });
+                port = selectedPort;
+            }
             
             const textEncoder = new TextEncoderStream();
-            const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
+            writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
             writer = textEncoder.writable.getWriter();
             
             const textDecoder = new TextDecoderStream();
@@ -280,7 +324,8 @@ ui.connToggle.addEventListener('click', async () => {
             
             enableControls('usb');
             readLoop(); 
-            if (!coachmarkFlags.step2Shown && coachmarkFlags.step1Shown) {
+            if (!coachmarkFlags.step2Shown && coachmarkFlags.step1Shown && localStorage.getItem('coachmark_suspended') !== '1') {
+                hideCoachmark(coachmarks.connect);
                 showCoachmark(coachmarks.mode, ui.modeSelect);
                 coachmarkFlags.step2Shown = true;
                 localStorage.setItem('coachmark_step2', '1');
@@ -293,33 +338,24 @@ ui.connToggle.addEventListener('click', async () => {
             console.error(e); 
             ui.status.innerText = "Error"; 
             isConnected = false;
+        } finally {
+            isConnecting = false;
         }
     } else {
         // Disconnect Logic
         try {
-            keepReading = false;
-            if (reader) {
-                await reader.cancel();
-                await readableStreamClosed.catch(() => {});
-                reader = null;
-            }
-            if (writer) {
-                await writer.close();
-                writer = null;
-            }
-            if (port) {
-                await port.close();
-                port = null;
-            }
+            await closeSerial();
             isConnected = false;
             hideCoachmark(coachmarks.controls);
             hideCoachmark(coachmarks.defaults);
+            hideCoachmark(coachmarks.info);
             hideCoachmark(coachmarks.mode);
             enableControls('locked');
         } catch(e) {
             isConnected = false;
             hideCoachmark(coachmarks.controls);
             hideCoachmark(coachmarks.defaults);
+            hideCoachmark(coachmarks.info);
             hideCoachmark(coachmarks.mode);
             enableControls('locked');
         }
@@ -463,11 +499,66 @@ function positionCoachmark(mark, targetEl) {
 function handleControlsInteraction() {
     if (coachmarks.controls && !coachmarks.controls.root.classList.contains('hidden')) {
         hideCoachmark(coachmarks.controls);
-        if (!coachmarkFlags.defaultsShown && coachmarkFlags.step1Shown) {
+        if (!coachmarkFlags.defaultsShown && coachmarkFlags.step1Shown && localStorage.getItem('coachmark_suspended') !== '1') {
             showCoachmark(coachmarks.defaults, ui.defaults);
             coachmarkFlags.defaultsShown = true;
             localStorage.setItem('coachmark_defaults', '1');
         }
+    }
+}
+
+function canDismissCoachmarks() {
+    return localStorage.getItem('coachmark_first_run') !== '1';
+}
+
+function hideAllCoachmarks() {
+    hideCoachmark(coachmarks.connect);
+    hideCoachmark(coachmarks.mode);
+    hideCoachmark(coachmarks.controls);
+    hideCoachmark(coachmarks.defaults);
+    hideCoachmark(coachmarks.info);
+}
+
+function dismissCoachmarks() {
+    hideAllCoachmarks();
+    localStorage.setItem('coachmark_suspended', '1');
+}
+
+function wireCoachmarkDismiss(mark) {
+    if (!mark.root) return;
+    const blockers = mark.root.querySelectorAll('.coachmark-blocker');
+    blockers.forEach((blocker) => {
+        blocker.addEventListener('click', () => {
+            if (!canDismissCoachmarks()) return;
+            dismissCoachmarks();
+        });
+    });
+}
+
+Object.values(coachmarks).forEach((mark) => wireCoachmarkDismiss(mark));
+
+function resetCoachmarkFlags() {
+    coachmarkFlags.step1Shown = false;
+    coachmarkFlags.step2Shown = false;
+    coachmarkFlags.step3Shown = false;
+    coachmarkFlags.defaultsShown = false;
+    coachmarkFlags.infoShown = false;
+    localStorage.removeItem('coachmark_suspended');
+    localStorage.removeItem('coachmark_step1');
+    localStorage.removeItem('coachmark_step2');
+    localStorage.removeItem('coachmark_step3');
+    localStorage.removeItem('coachmark_defaults');
+    localStorage.removeItem('coachmark_info');
+    localStorage.setItem('coachmark_pending', '1');
+}
+
+function startCoachmarksReplay() {
+    resetCoachmarkFlags();
+    if (intro.main.classList.contains('visible')) {
+        showCoachmark(coachmarks.connect, ui.connToggle);
+        coachmarkFlags.step1Shown = true;
+        localStorage.setItem('coachmark_step1', '1');
+        localStorage.removeItem('coachmark_pending');
     }
 }
 
@@ -478,6 +569,7 @@ window.addEventListener('resize', () => {
             if (mark.root.id === 'connectCoachmark') target = ui.connToggle;
             else if (mark.root.id === 'controlsCoachmark') target = ui.controls;
             else if (mark.root.id === 'defaultsCoachmark') target = ui.defaults;
+            else if (mark.root.id === 'infoCoachmark') target = ui.infoBtn;
             if (target) positionCoachmark(mark, target);
         }
     });
@@ -485,7 +577,7 @@ window.addEventListener('resize', () => {
 
 ui.modeSelect.addEventListener('change', () => {
     hideCoachmark(coachmarks.mode);
-    if (!coachmarkFlags.step3Shown && coachmarkFlags.step1Shown) {
+    if (!coachmarkFlags.step3Shown && coachmarkFlags.step1Shown && localStorage.getItem('coachmark_suspended') !== '1') {
         showCoachmark(coachmarks.controls, ui.controls);
         coachmarkFlags.step3Shown = true;
         localStorage.setItem('coachmark_step3', '1');
@@ -529,6 +621,23 @@ ui.controls.addEventListener('input', () => {
 ui.controls.addEventListener('change', () => {
     handleControlsInteraction();
 });
+
+if (ui.infoBtn) {
+    ui.infoBtn.addEventListener('click', () => {
+        if (coachmarks.info.root && !coachmarks.info.root.classList.contains('hidden')) {
+            dismissCoachmarks();
+            localStorage.setItem('coachmark_first_run', '0');
+            return;
+        }
+        if (localStorage.getItem('coachmark_first_run') === '1') {
+            dismissCoachmarks();
+            localStorage.setItem('coachmark_first_run', '0');
+            return;
+        }
+        hideAllCoachmarks();
+        startCoachmarksReplay();
+    });
+}
 
 // --- WIDGETS ---
 function createColorInput(label, key) {
@@ -737,6 +846,12 @@ requestAnimationFrame(animate);
 
 ui.defaults.addEventListener('click', () => {
      hideCoachmark(coachmarks.defaults);
+     if (!coachmarkFlags.infoShown && coachmarkFlags.step1Shown) {
+         showCoachmark(coachmarks.info, ui.infoBtn);
+         coachmarkFlags.infoShown = true;
+         localStorage.setItem('coachmark_info', '1');
+         localStorage.setItem('coachmark_first_run', '0');
+     }
      appState = {
         mode: "solid",
         solid_color: [255, 230, 0], solid_bright: 0.8,
