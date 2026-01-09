@@ -56,8 +56,20 @@ function initIntro() {
             typeWriter(`Welcome back, ${formattedName}.<br>The Shrine awaits.`);
         }, 500);
     } else {
-        intro.input.focus();
-        updateSubmitVisibility();
+        intro.prompt.style.display = 'block';
+        if (intro.inputWrap) {
+            intro.inputWrap.style.display = 'flex';
+            intro.inputWrap.classList.remove('visible');
+        }
+        intro.prompt.textContent = "";
+        setSubmitVisibility(false);
+        typePrompt("Greetings, traveler!|May I know your name?", () => {
+            if (intro.inputWrap) intro.inputWrap.classList.add('visible');
+            setTimeout(() => {
+                intro.input.focus();
+                updateSubmitVisibility();
+            }, 200);
+        });
     }
 }
 
@@ -131,6 +143,26 @@ function typeWriter(text) {
         }
     }
     type();
+}
+
+function typePrompt(text, done) {
+    let i = 0;
+    intro.prompt.textContent = "";
+    function tick() {
+        if (i < text.length) {
+            const char = text.charAt(i);
+            if (char === "|") {
+                intro.prompt.appendChild(document.createElement("br"));
+            } else {
+                intro.prompt.appendChild(document.createTextNode(char));
+            }
+            i++;
+            setTimeout(tick, 75);
+        } else if (typeof done === "function") {
+            done();
+        }
+    }
+    tick();
 }
 
 intro.btn.addEventListener('click', () => {
